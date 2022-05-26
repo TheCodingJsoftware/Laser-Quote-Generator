@@ -14,14 +14,17 @@ import fitz  # PyMuPDF
 import openpyxl
 from alive_progress import alive_bar
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image
 from openpyxl.styles import Alignment
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from PIL import Image
 from rich import print
 
+program_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
+
 global_variables = configparser.ConfigParser()
-global_variables.read("global_variables.cfg")
+global_variables.read(f"{program_directory}/global_variables.cfg")
 
 nitrogen_cost_per_hour: int = float(
     global_variables["GLOBAL VARIABLES"]["nitrogen_cost_per_hour"]
@@ -31,7 +34,6 @@ materials = global_variables["GLOBAL VARIABLES"]["materials"].split(",")
 gauges = global_variables["GLOBAL VARIABLES"]["gauges"].split(",")
 path_to_sheet_prices = global_variables["GLOBAL VARIABLES"]["path_to_sheet_prices"]
 
-program_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 geofile_name_regex = r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
@@ -120,21 +122,21 @@ def generate_excel_file(*args):
     source.append(["Nitrogen", "CO2"])
     source.append([nitrogen_cost_per_hour, co2_cost_per_hour])
     num: int = 0
-    ws.append(
-        [
-            "",
-            "File name:",
-            "Part #:",
-            "Machining time (min):",
-            "Weight (lb):",
-            "Quantity",
-            "Material Type",
-            "Gauge",
-            "Cost",
-            "Laser cutting:",
-            "Nitrogen",
-        ]
-    )
+    headers = [
+        "",
+        "File name:",
+        "Part #:",
+        "Machining time (min):",
+        "Weight (lb):",
+        "Quantity",
+        "Material Type",
+        "Gauge",
+        "Cost",
+        "Laser cutting:",
+        "Nitrogen",
+    ]
+    ws.append(headers)
+
     ws.column_dimensions["A"].width = 11
     ws.column_dimensions["B"].width = 20
     ws.column_dimensions["C"].width = 10
@@ -185,7 +187,7 @@ def generate_excel_file(*args):
         _cell = ws.cell(row, 9)
         _cell.number_format = "$#,##0.00"
 
-        img = openpyxl.drawing.image.Image(f"{program_directory}/images/{num}.jpeg")
+        img = Image(f"{program_directory}/images/{num}.jpeg")
         img.anchor = f"A{row}"
         ws.row_dimensions[row].height = 57
         ws.add_image(img)
@@ -232,19 +234,23 @@ def convert(file_names: list):
         force_tty=True,
         theme="smooth",
     ) as bar:
-        bar.text = f"-> Getting text, please wait..."
+        bar.text = "-> Getting text, please wait..."
+
         convert_pdf_to_text(file_names, bar)
+
+        bar.text = "-> Getting images, please wait..."
         bar()
-        bar.text = f"-> Getting images, please wait..."
+
         extract_images_from_pdf(file_names, bar)
-        bar.text = f"-> Generating excel sheet, please wait..."
+
+        bar.text = "-> Generating excel sheet, please wait..."
         bar()
+
         part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
-        file_names = []
-        for part_file_path in part_file_paths:
-            file_names.append(
-                part_file_path.split("\\")[-1].replace("\n", "").replace(".GEO", "")
-            )
+        file_names = [
+            part_file_path.split("\\")[-1].replace("\n", "").replace(".GEO", "")
+            for part_file_path in part_file_paths
+        ]
 
         quantity = get_table_value_from_text(regex=quantity_regex)
         quantity_numbers = [int(time.replace("  NUMBER: ", "")) for time in quantity]
@@ -264,6 +270,7 @@ def convert(file_names: list):
         part_numbers = [
             int(time.replace("PART NUMBER: ", "")) for time in part_numbers_string
         ]
+
         generate_excel_file(
             file_names,
             part_numbers,
@@ -277,8 +284,11 @@ def convert(file_names: list):
             ["", "Total cost:", "=SUM(Table1[Cost])"],
         )
         bar()
+
         print(f'Opening "{program_directory}/excel_sheet.xlsx"')
+
         bar()
+
         os.startfile(f'"{program_directory}/excel_sheet.xlsx"')
 
         shutil.rmtree(f"{program_directory}/images")
