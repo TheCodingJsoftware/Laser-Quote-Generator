@@ -14,7 +14,7 @@ import fitz  # PyMuPDF
 import openpyxl
 from alive_progress import alive_bar
 from openpyxl import Workbook
-from openpyxl.drawing.image import Image
+from openpyxl.drawing import image
 from openpyxl.styles import Alignment
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -187,7 +187,7 @@ def generate_excel_file(*args):
         _cell = ws.cell(row, 9)
         _cell.number_format = "$#,##0.00"
 
-        img = Image(f"{program_directory}/images/{num}.jpeg")
+        img = image.Image(f"{program_directory}/images/{num}.jpeg")
         img.anchor = f"A{row}"
         ws.row_dimensions[row].height = 57
         ws.add_image(img)
