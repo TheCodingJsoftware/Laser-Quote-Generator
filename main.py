@@ -125,26 +125,25 @@ def generate_excel_file(*args):
     headers = [
         "",
         "File name:",
-        "Part #:",
         "Machining time (min):",
         "Weight (lb):",
         "Quantity",
         "Material Type",
         "Gauge",
         "Cost",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
         "Laser cutting:",
         "Nitrogen",
     ]
+    ws.append(["", "", "", "", "", "Quote Name:"])
     ws.append(headers)
 
     ws.column_dimensions["A"].width = 11
-    ws.column_dimensions["B"].width = 20
-    ws.column_dimensions["C"].width = 10
-    ws.column_dimensions["D"].width = 22
-    ws.column_dimensions["E"].width = 14
-    ws.column_dimensions["F"].width = 10
-    ws.column_dimensions["G"].width = 20
-    ws.column_dimensions["j"].width = 14
 
     material_selection = DataValidation(type="list", formula1="'Sheet 2'!$A$1:$H$1")
     ws.add_data_validation(material_selection)
@@ -154,10 +153,15 @@ def generate_excel_file(*args):
 
     laser_cutting = DataValidation(type="list", formula1="'Sheet 2'!$A$3:$B$3")
     ws.add_data_validation(laser_cutting)
-    laser_cutting.add(ws["$K$1"])
+    laser_cutting.add(ws["$P$2"])
+
+    img = image.Image(f"{program_directory}/Piney MGF Logo.png")
+    img.anchor = "A1"
+    ws.row_dimensions[1].height = 65
+    ws.add_image(img)
 
     for part_number, machine_time, weight in zip(args[0], args[1], args[2]):
-        row: int = num + 2
+        row: int = num + 3
         ws.append(
             [
                 "",
@@ -165,26 +169,27 @@ def generate_excel_file(*args):
                 args[1][num],
                 args[2][num],
                 args[3][num],
-                args[4][num],
                 materials[0],
                 gauges[0],
             ]
         )
-        material_selection.add(ws[f"G{row}"])
+        material_selection.add(ws[f"F{row}"])
 
-        gauge_selection.add(ws[f"H{row}"])
+        gauge_selection.add(ws[f"G{row}"])
 
-        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH(G{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$E{row}"
-        cost_for_time = f"(INDEX('Sheet 2'!A4:B4,MATCH(K1,'Sheet 2'!A3:B3,0))/60)*$D{row}"
-        quantity = f"$F{row}"
-        ws[f"I{ row}"] = f"=({cost_for_weight}+{cost_for_time})*{quantity}"
+        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH(F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$C{row}"
+        cost_for_time = (
+            f"(INDEX('Sheet 2'!A4:B4,MATCH($P$2,'Sheet 2'!A3:B3,0))/60)*$D{row}"
+        )
+        quantity = f"$E{row}"
+        ws[f"H{ row}"] = f"=({cost_for_weight}+{cost_for_time})*{quantity}"
 
         for col in [2, 3, 4, 5, 6, 7, 8, 9]:
             ws.cell(row, col).alignment = Alignment(
                 horizontal="center", vertical="center", wrap_text=True
             )
 
-        _cell = ws.cell(row, 9)
+        _cell = ws.cell(row, 8)
         _cell.number_format = "$#,##0.00"
 
         img = image.Image(f"{program_directory}/images/{num}.jpeg")
@@ -193,24 +198,31 @@ def generate_excel_file(*args):
         ws.add_image(img)
         num += 1
 
-    tab = Table(displayName="Table1", ref=f"B1:I{num+1}")
+    tab = Table(displayName="Table1", ref=f"B2:H{num+2}")
 
     style = TableStyleInfo(
-        name="TableStyleLight9",
+        name="TableStyleLight8",
         showFirstColumn=False,
         showLastColumn=False,
         showRowStripes=True,
-        showColumnStripes=True,
+        showColumnStripes=False,
     )
     tab.tableStyleInfo = style
     ws.add_table(tab)
 
     for i, j in enumerate(args):
-        if i > 4:
+        if i > 3:
             ws.append(args[i])
 
-    _cell = ws.cell(num + 6, 3)
+    _cell = ws.cell(num + 4, 8)
     _cell.number_format = "$#,##0.00"
+
+    _cell = ws.cell(num + 4, 16)
+    _cell.number_format = "0%"
+    _cell = ws.cell(num + 5, 16)
+    _cell.number_format = "0%"
+
+    ws[f"H{num+4}"] = f"=(SUM(Table1[Cost])/(1-(P{num+4})))*(1+P{num+5})"
 
     wb.save(f"{program_directory}/excel_sheet.xlsx")  # save to excel file.
     print("[+] Excel sheet generated.")
@@ -273,15 +285,29 @@ def convert(file_names: list):
 
         generate_excel_file(
             file_names,
-            part_numbers,
             machining_times_numbers,
             weights_numbers,
             quantity_numbers,
             [],
-            ["", "Total time (min):", "=SUM(Table1[Machining time (min):])"],
-            ["", "Total weight (lb):", "=SUM(Table1[Weight (lb):])"],
-            ["", "Total parts:", "=SUM(Table1[Quantity])"],
-            ["", "Total cost:", "=SUM(Table1[Cost])"],
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "Total cost:",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "Overhead: ",
+                0.1,
+            ],
+            ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "Markup: ", 0.5],
         )
         bar()
 
