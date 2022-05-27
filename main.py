@@ -139,20 +139,22 @@ def generate_excel_file(*args):
     excel_document.set_cell_height(cell="A1", height=67)
 
     headers = [
-        "File name:",
-        "Machining time (min):",
-        "Weight (lb):",
+        "Part name",
+        "Machining time (min)",
+        "Weight (lb)",
         "Quantity",
-        "Material Type",
+        "Material",
         "Gauge",
         "Cost",
     ]
 
-    excel_document.add_item(cell="F1", item="Quote Name:")
+    excel_document.add_item(cell="G1", item="Quote Name:")
     excel_document.add_list(cell="B2", items=headers)
 
     excel_document.set_cell_width(cell="A1", width=11)
-
+    excel_document.set_cell_width(cell="B1", width=22)
+    excel_document.hide_coloumn(cell="C1")
+    excel_document.hide_coloumn(cell="D1")
     excel_document.set_cell_width(cell="O1", width=15)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
@@ -178,9 +180,9 @@ def generate_excel_file(*args):
             cell=f"G{row}", type="list", formula="'Sheet 2'!$A$2:$K$2"
         )
 
-        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$C{row}"
+        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D{row}"
         cost_for_time = (
-            f"(INDEX('Sheet 2'!$A$4:$B$4,MATCH($P$2,'Sheet 2'!$A$3:$B$3,0))/60)*$D{row}"
+            f"(INDEX('Sheet 2'!$A$4:$B$4,MATCH($P$2,'Sheet 2'!$A$3:$B$3,0))/60)*$C{row}"
         )
         quantity = f"$E{row}"
 

@@ -230,8 +230,19 @@ class ExcelFile:
             showRowStripes=True,
             showColumnStripes=False,
         )
+        table.autoFilter = None
         table.tableStyleInfo = style
         self.worksheet.add_table(table)
+
+    def hide_coloumn(self, cell: str, hidden: bool = True) -> None:
+        """Hide column
+
+        Args:
+            cell (str): Such as "A1"
+            visible (bool): True or False
+        """
+        col, _ = self.parse_cell(cell=cell)
+        self.worksheet.column_dimensions[col].hidden = hidden
 
     def save(self) -> None:
         """Save excel file."""
