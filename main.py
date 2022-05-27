@@ -21,6 +21,8 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from PIL import Image
 from rich import print
 
+from excel_file import ExcelFile
+
 program_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 global_variables = configparser.ConfigParser()
@@ -113,17 +115,35 @@ def get_table_value_from_text(regex) -> list:
 
 def generate_excel_file(*args):
     print("[ ] Generating excel sheet")
-    wb = Workbook()
-    wb.create_sheet("Sheet 2")
-    ws = wb.active
-    source = wb.get_sheet_by_name("Sheet 2")
-    source.append(materials)
-    source.append(gauges)
-    source.append(["Nitrogen", "CO2"])
-    source.append([nitrogen_cost_per_hour, co2_cost_per_hour])
+
+    excel_document = ExcelFile(file_name=f"{program_directory}/excel_sheet.xlsx")
+    # wb = Workbook()
+    # wb.create_sheet("Sheet 2")
+    excel_document.create_sheet(sheet_name="Sheet 2")
+    # ws = wb.active
+    # source = wb.get_sheet_by_name("Sheet 2")
+
+    excel_document.add_list_to_sheet(
+        sheet_name="Sheet 2", col="A", row=1, items=materials
+    )
+    excel_document.add_list_to_sheet(sheet_name="Sheet 2", col="A", row=2, items=gauges)
+    excel_document.add_list_to_sheet(
+        sheet_name="Sheet 2", col="A", row=3, items=["Nitrogen", "CO2"]
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="Sheet 2",
+        col="A",
+        row=4,
+        items=[nitrogen_cost_per_hour, co2_cost_per_hour],
+    )
+
+    excel_document.add_image(
+        col="A", row=1, path_to_image=f"{program_directory}/Piney MGF Logo.png"
+    )
+    excel_document.set_row_height(row=1, height=67)
+
     num: int = 0
     headers = [
-        "",
         "File name:",
         "Machining time (min):",
         "Weight (lb):",
@@ -131,100 +151,81 @@ def generate_excel_file(*args):
         "Material Type",
         "Gauge",
         "Cost",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "Laser cutting:",
-        "Nitrogen",
     ]
-    ws.append(["", "", "", "", "", "Quote Name:"])
-    ws.append(headers)
 
-    ws.column_dimensions["A"].width = 11
+    excel_document.add_item(col="F", row=1, item="Quote Name:")
+    excel_document.add_list(col="B", row=2, items=headers)
 
-    material_selection = DataValidation(type="list", formula1="'Sheet 2'!$A$1:$H$1")
-    ws.add_data_validation(material_selection)
+    excel_document.set_col_width("A", width=11)
 
-    gauge_selection = DataValidation(type="list", formula1="'Sheet 2'!$A$2:$K$2")
-    ws.add_data_validation(gauge_selection)
+    excel_document.set_col_width(col="O", width=15)
 
-    laser_cutting = DataValidation(type="list", formula1="'Sheet 2'!$A$3:$B$3")
-    ws.add_data_validation(laser_cutting)
-    laser_cutting.add(ws["$P$2"])
-
-    img = image.Image(f"{program_directory}/Piney MGF Logo.png")
-    img.anchor = "A1"
-    ws.row_dimensions[1].height = 65
-    ws.add_image(img)
+    excel_document.add_item(col="O", row=2, item="Laser cutting:")
+    excel_document.add_item(col="P", row=2, item="Nitrogen")
+    excel_document.add_dropdown_selection(
+        col="P", row=2, type="list", formula="'Sheet 2'!$A$3:$B$3"
+    )
 
     for part_number, machine_time, weight in zip(args[0], args[1], args[2]):
         row: int = num + 3
-        ws.append(
-            [
-                "",
-                args[0][num],
-                args[1][num],
-                args[2][num],
-                args[3][num],
-                materials[0],
-                gauges[0],
-            ]
-        )
-        material_selection.add(ws[f"F{row}"])
+        excel_document.add_item(col="B", row=row, item=args[0][num])  # File name
+        excel_document.add_item(col="C", row=row, item=args[1][num])  # Machine Time
+        excel_document.add_item(col="D", row=row, item=args[2][num])  # Weight
+        excel_document.add_item(col="E", row=row, item=args[3][num])  # Quantity
+        excel_document.add_item(col="F", row=row, item=materials[0])  # Material Type
+        excel_document.add_item(col="G", row=row, item=gauges[0])  # Gauge Selection
 
-        gauge_selection.add(ws[f"G{row}"])
+        excel_document.add_dropdown_selection(
+            col="F", row=row, type="list", formula="'Sheet 2'!$A$1:$H$1"
+        )
+        excel_document.add_dropdown_selection(
+            col="G", row=row, type="list", formula="'Sheet 2'!$A$2:$K$2"
+        )
 
         cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH(F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$C{row}"
         cost_for_time = (
             f"(INDEX('Sheet 2'!A4:B4,MATCH($P$2,'Sheet 2'!A3:B3,0))/60)*$D{row}"
         )
         quantity = f"$E{row}"
-        ws[f"H{ row}"] = f"=({cost_for_weight}+{cost_for_time})*{quantity}"
 
-        for col in [2, 3, 4, 5, 6, 7, 8, 9]:
-            ws.cell(row, col).alignment = Alignment(
-                horizontal="center", vertical="center", wrap_text=True
+        excel_document.add_item(
+            col="H", row=row, item=f"=({cost_for_weight}+{cost_for_time})*{quantity}"
+        )  # Cost
+
+        for col in ["B", "C", "D", "E", "F", "G", "H"]:
+            excel_document.set_alignment(
+                col=col, row=row, horizontal="center", vertical="center", wrap_text=True
             )
 
-        _cell = ws.cell(row, 8)
-        _cell.number_format = "$#,##0.00"
+        excel_document.format_cell(col="H", row=row, number_format="$#,##0.00")
 
-        img = image.Image(f"{program_directory}/images/{num}.jpeg")
-        img.anchor = f"A{row}"
-        ws.row_dimensions[row].height = 57
-        ws.add_image(img)
+        excel_document.add_image(
+            col="A", row=row, path_to_image=f"{program_directory}/images/{num}.jpeg"
+        )
+        excel_document.set_row_height(row=row, height=57)
+
         num += 1
 
-    tab = Table(displayName="Table1", ref=f"B2:H{num+2}")
-
-    style = TableStyleInfo(
-        name="TableStyleLight8",
-        showFirstColumn=False,
-        showLastColumn=False,
-        showRowStripes=True,
-        showColumnStripes=False,
+    excel_document.add_table(
+        display_name="Table1", theme="TableStyleLight8", location=f"B2:H{num+2}"
     )
-    tab.tableStyleInfo = style
-    ws.add_table(tab)
 
-    for i, j in enumerate(args):
-        if i > 3:
-            ws.append(args[i])
+    excel_document.add_item(col="G", row=num + 4, item="Total cost: ")
+    excel_document.add_item(
+        col="H", row=num + 4, item=f"=(SUM(Table1[Cost])/(1-(P{num+4})))*(1+P{num+5})"
+    )
+    excel_document.format_cell(col="H", row=num + 4, number_format="$#,##0.00")
 
-    _cell = ws.cell(num + 4, 8)
-    _cell.number_format = "$#,##0.00"
+    excel_document.add_item(col="O", row=num + 4, item="Overhead:")
+    excel_document.add_item(col="P", row=num + 4, item=0.1)
+    excel_document.format_cell(col="P", row=num + 4, number_format="0%")
 
-    _cell = ws.cell(num + 4, 16)
-    _cell.number_format = "0%"
-    _cell = ws.cell(num + 5, 16)
-    _cell.number_format = "0%"
+    excel_document.add_item(col="O", row=num + 5, item="Markup:")
+    excel_document.add_item(col="P", row=num + 5, item=0.5)
+    excel_document.format_cell(col="P", row=num + 5, number_format="0%")
 
-    ws[f"H{num+4}"] = f"=(SUM(Table1[Cost])/(1-(P{num+4})))*(1+P{num+5})"
+    excel_document.save()
 
-    wb.save(f"{program_directory}/excel_sheet.xlsx")  # save to excel file.
     print("[+] Excel sheet generated.")
 
 
@@ -284,30 +285,7 @@ def convert(file_names: list):
         ]
 
         generate_excel_file(
-            file_names,
-            machining_times_numbers,
-            weights_numbers,
-            quantity_numbers,
-            [],
-            [
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "Total cost:",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "Overhead: ",
-                0.1,
-            ],
-            ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "Markup: ", 0.5],
+            file_names, machining_times_numbers, weights_numbers, quantity_numbers
         )
         bar()
 
