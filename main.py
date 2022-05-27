@@ -102,6 +102,7 @@ def extract_images_from_pdf(pdf_paths: list, bar) -> None:
 
 
 def get_table_value_from_text(regex) -> list:
+
     with open(f"{program_directory}/output.txt", "r") as f:
         text = f.read()
 
@@ -121,26 +122,22 @@ def generate_excel_file(*args):
 
     excel_document.create_sheet(sheet_name="Sheet 2")
 
+    excel_document.add_list_to_sheet(sheet_name="Sheet 2", cell="A1", items=materials)
+    excel_document.add_list_to_sheet(sheet_name="Sheet 2", cell="A2", items=gauges)
     excel_document.add_list_to_sheet(
-        sheet_name="Sheet 2", col="A", row=1, items=materials
-    )
-    excel_document.add_list_to_sheet(sheet_name="Sheet 2", col="A", row=2, items=gauges)
-    excel_document.add_list_to_sheet(
-        sheet_name="Sheet 2", col="A", row=3, items=["Nitrogen", "CO2"]
+        sheet_name="Sheet 2", cell="A3", items=["Nitrogen", "CO2"]
     )
     excel_document.add_list_to_sheet(
         sheet_name="Sheet 2",
-        col="A",
-        row=4,
+        cell="A4",
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
     )
 
     excel_document.add_image(
-        col="A", row=1, path_to_image=f"{program_directory}/Piney MGF Logo.png"
+        cell="A1", path_to_image=f"{program_directory}/Piney MGF Logo.png"
     )
-    excel_document.set_row_height(row=1, height=67)
+    excel_document.set_cell_height(cell="A1", height=67)
 
-    num: int = 0
     headers = [
         "File name:",
         "Machining time (min):",
@@ -151,56 +148,57 @@ def generate_excel_file(*args):
         "Cost",
     ]
 
-    excel_document.add_item(col="F", row=1, item="Quote Name:")
-    excel_document.add_list(col="B", row=2, items=headers)
+    excel_document.add_item(cell="F1", item="Quote Name:")
+    excel_document.add_list(cell="B2", items=headers)
 
-    excel_document.set_col_width("A", width=11)
+    excel_document.set_cell_width(cell="A1", width=11)
 
-    excel_document.set_col_width(col="O", width=15)
+    excel_document.set_cell_width(cell="O1", width=15)
 
-    excel_document.add_item(col="O", row=2, item="Laser cutting:")
-    excel_document.add_item(col="P", row=2, item="Nitrogen")
+    excel_document.add_item(cell="O2", item="Laser cutting:")
+    excel_document.add_item(cell="P2", item="Nitrogen")
     excel_document.add_dropdown_selection(
-        col="P", row=2, type="list", formula="'Sheet 2'!$A$3:$B$3"
+        cell="P2", type="list", formula="'Sheet 2'!$A$3:$B$3"
     )
+    excel_document.add_list(cell="B3", items=args[0], horizontal=False)  # File name
+    excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time
+    excel_document.add_list(cell="D3", items=args[2], horizontal=False)  # Weight
+    excel_document.add_list(cell="E3", items=args[3], horizontal=False)  # Quantity
 
-    for part_number, machine_time, weight in zip(args[0], args[1], args[2]):
+    num: int = 0
+
+    for _ in range(len(args[0])):
         row: int = num + 3
-        excel_document.add_item(col="B", row=row, item=args[0][num])  # File name
-        excel_document.add_item(col="C", row=row, item=args[1][num])  # Machine Time
-        excel_document.add_item(col="D", row=row, item=args[2][num])  # Weight
-        excel_document.add_item(col="E", row=row, item=args[3][num])  # Quantity
-        excel_document.add_item(col="F", row=row, item=materials[0])  # Material Type
-        excel_document.add_item(col="G", row=row, item=gauges[0])  # Gauge Selection
-
+        excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
+        excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
         excel_document.add_dropdown_selection(
-            col="F", row=row, type="list", formula="'Sheet 2'!$A$1:$H$1"
+            cell=f"F{row}", type="list", formula="'Sheet 2'!$A$1:$H$1"
         )
         excel_document.add_dropdown_selection(
-            col="G", row=row, type="list", formula="'Sheet 2'!$A$2:$K$2"
+            cell=f"G{row}", type="list", formula="'Sheet 2'!$A$2:$K$2"
         )
 
-        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH(F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$C{row}"
+        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$C{row}"
         cost_for_time = (
-            f"(INDEX('Sheet 2'!A4:B4,MATCH($P$2,'Sheet 2'!A3:B3,0))/60)*$D{row}"
+            f"(INDEX('Sheet 2'!$A$4:$B$4,MATCH($P$2,'Sheet 2'!$A$3:$B$3,0))/60)*$D{row}"
         )
         quantity = f"$E{row}"
 
         excel_document.add_item(
-            col="H", row=row, item=f"=({cost_for_weight}+{cost_for_time})*{quantity}"
+            cell=f"H{row}", item=f"=({cost_for_weight}+{cost_for_time})*{quantity}"
         )  # Cost
 
         for col in ["B", "C", "D", "E", "F", "G", "H"]:
             excel_document.set_alignment(
-                col=col, row=row, horizontal="center", vertical="center", wrap_text=True
+                cell=f"{col}{row}", horizontal="center", vertical="center", wrap_text=True
             )
 
-        excel_document.format_cell(col="H", row=row, number_format="$#,##0.00")
+        excel_document.format_cell(cell=f"H{row}", number_format="$#,##0.00")
 
         excel_document.add_image(
-            col="A", row=row, path_to_image=f"{program_directory}/images/{num}.jpeg"
+            cell=f"A{row}", path_to_image=f"{program_directory}/images/{num}.jpeg"
         )
-        excel_document.set_row_height(row=row, height=57)
+        excel_document.set_cell_height(cell=f"A{row}", height=57)
 
         num += 1
 
@@ -208,19 +206,19 @@ def generate_excel_file(*args):
         display_name="Table1", theme="TableStyleLight8", location=f"B2:H{num+2}"
     )
 
-    excel_document.add_item(col="G", row=num + 4, item="Total cost: ")
+    excel_document.add_item(cell=f"G{num+4}", item="Total cost: ")
     excel_document.add_item(
-        col="H", row=num + 4, item=f"=(SUM(Table1[Cost])/(1-($P${num+4})))*(1+$P${num+5})"
+        cell=f"H{num+4}", item=f"=(SUM(Table1[Cost])/(1-($P${num+4})))*(1+$P${num+5})"
     )
-    excel_document.format_cell(col="H", row=num + 4, number_format="$#,##0.00")
+    excel_document.format_cell(cell=f"H{num+4}", number_format="$#,##0.00")
 
-    excel_document.add_item(col="O", row=num + 4, item="Overhead:")
-    excel_document.add_item(col="P", row=num + 4, item=0.1)
-    excel_document.format_cell(col="P", row=num + 4, number_format="0%")
+    excel_document.add_item(cell=f"O{num + 4}", item="Overhead:")
+    excel_document.add_item(cell=f"P{num + 4}", item=0.1)
+    excel_document.format_cell(cell=f"P{num + 4}", number_format="0%")
 
-    excel_document.add_item(col="O", row=num + 5, item="Markup:")
-    excel_document.add_item(col="P", row=num + 5, item=0.5)
-    excel_document.format_cell(col="P", row=num + 5, number_format="0%")
+    excel_document.add_item(cell=f"O{num + 5}", item="Markup:")
+    excel_document.add_item(cell=f"P{num + 5}", item=0.5)
+    excel_document.format_cell(cell=f"P{num + 5}", number_format="0%")
 
     excel_document.save()
 
