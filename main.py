@@ -110,6 +110,7 @@ def get_table_value_from_text(regex) -> list:
     matches = re.finditer(regex, text, re.MULTILINE)
     for match in matches:
         items.extend(iter(match.groups()))
+
     return items
 
 
@@ -117,11 +118,8 @@ def generate_excel_file(*args):
     print("[ ] Generating excel sheet")
 
     excel_document = ExcelFile(file_name=f"{program_directory}/excel_sheet.xlsx")
-    # wb = Workbook()
-    # wb.create_sheet("Sheet 2")
+
     excel_document.create_sheet(sheet_name="Sheet 2")
-    # ws = wb.active
-    # source = wb.get_sheet_by_name("Sheet 2")
 
     excel_document.add_list_to_sheet(
         sheet_name="Sheet 2", col="A", row=1, items=materials
@@ -212,7 +210,7 @@ def generate_excel_file(*args):
 
     excel_document.add_item(col="G", row=num + 4, item="Total cost: ")
     excel_document.add_item(
-        col="H", row=num + 4, item=f"=(SUM(Table1[Cost])/(1-(P{num+4})))*(1+P{num+5})"
+        col="H", row=num + 4, item=f"=(SUM(Table1[Cost])/(1-($P${num+4})))*(1+$P${num+5})"
     )
     excel_document.format_cell(col="H", row=num + 4, number_format="$#,##0.00")
 
