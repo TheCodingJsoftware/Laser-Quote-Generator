@@ -234,7 +234,7 @@ class ExcelFile:
         table.tableStyleInfo = style
         self.worksheet.add_table(table)
 
-    def hide_coloumn(self, cell: str, hidden: bool = True) -> None:
+    def set_col_hidden(self, cell: str, hidden: bool = True) -> None:
         """Hide column
 
         Args:
@@ -243,6 +243,16 @@ class ExcelFile:
         """
         col, _ = self.parse_cell(cell=cell)
         self.worksheet.column_dimensions[col].hidden = hidden
+
+    def set_row_hidden(self, cell: str, hidden: bool = True) -> None:
+        """Hide row
+
+        Args:
+            cell (str): Such as "A1"
+            visible (bool): True or False
+        """
+        _, row = self.parse_cell(cell=cell)
+        self.worksheet.row_dimensions[col].hidden = hidden
 
     def save(self) -> None:
         """Save excel file."""

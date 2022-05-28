@@ -153,8 +153,8 @@ def generate_excel_file(*args):
 
     excel_document.set_cell_width(cell="A1", width=11)
     excel_document.set_cell_width(cell="B1", width=22)
-    excel_document.hide_coloumn(cell="C1")
-    excel_document.hide_coloumn(cell="D1")
+    excel_document.set_col_hidden(cell="C1", hidden=True)
+    excel_document.set_col_hidden(cell="D1", hidden=True)
     excel_document.set_cell_width(cell="O1", width=15)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
