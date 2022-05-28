@@ -35,6 +35,7 @@ co2_cost_per_hour: int = float(global_variables["GLOBAL VARIABLES"]["co2_cost_pe
 materials = global_variables["GLOBAL VARIABLES"]["materials"].split(",")
 gauges = global_variables["GLOBAL VARIABLES"]["gauges"].split(",")
 path_to_sheet_prices = global_variables["GLOBAL VARIABLES"]["path_to_sheet_prices"]
+size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
 
 
 geofile_name_regex = r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
@@ -42,6 +43,7 @@ machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
 weight_regex = r"(WEIGHT: \d{1,}.\d{1,} lb)"
 quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
+sheet_quantity_regex = r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,})"
 
 
 def convert_pdf_to_text(pdf_paths: list, bar) -> None:
@@ -91,7 +93,7 @@ def extract_images_from_pdf(pdf_paths: list, bar) -> None:
                 image = Image.open(io.BytesIO(image_bytes))
                 if image.size[0] == 48 and image.size[1] == 48:
                     continue
-                image = image.resize((75, 75), Image.ANTIALIAS)
+                image = image.resize((size_of_picture, size_of_picture), Image.ANTIALIAS)
                 image.save(
                     open(f"{program_directory}/images/{image_count}.{image_ext}", "wb")
                 )
@@ -102,7 +104,6 @@ def extract_images_from_pdf(pdf_paths: list, bar) -> None:
 
 
 def get_table_value_from_text(regex) -> list:
-
     with open(f"{program_directory}/output.txt", "r") as f:
         text = f.read()
 
@@ -145,17 +146,19 @@ def generate_excel_file(*args):
         "Quantity",
         "Material",
         "Gauge",
-        "Cost",
+        "Price ($)",
     ]
 
     excel_document.add_item(cell="G1", item="Quote Name:")
     excel_document.add_list(cell="B2", items=headers)
 
-    excel_document.set_cell_width(cell="A1", width=11)
+    excel_document.set_cell_width(cell="A1", width=size_of_picture / 6)
     excel_document.set_cell_width(cell="B1", width=22)
     excel_document.set_col_hidden(cell="C1", hidden=True)
     excel_document.set_col_hidden(cell="D1", hidden=True)
     excel_document.set_cell_width(cell="O1", width=15)
+    excel_document.set_cell_width(cell="G1", width=15)
+    excel_document.set_cell_width(cell="H1", width=15)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
     excel_document.add_item(cell="P2", item="Nitrogen")
@@ -169,7 +172,7 @@ def generate_excel_file(*args):
 
     num: int = 0
 
-    for _ in range(len(args[0])):
+    for index in range(len(args[0])):
         row: int = num + 3
         excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
         excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
@@ -198,9 +201,10 @@ def generate_excel_file(*args):
         excel_document.format_cell(cell=f"H{row}", number_format="$#,##0.00")
 
         excel_document.add_image(
-            cell=f"A{row}", path_to_image=f"{program_directory}/images/{num}.jpeg"
+            cell=f"A{row}",
+            path_to_image=f"{program_directory}/images/{args[4][index]}.jpeg",
         )
-        excel_document.set_cell_height(cell=f"A{row}", height=57)
+        excel_document.set_cell_height(cell=f"A{row}", height=size_of_picture / 1.3)
 
         num += 1
 
@@ -208,9 +212,10 @@ def generate_excel_file(*args):
         display_name="Table1", theme="TableStyleLight8", location=f"B2:H{num+2}"
     )
 
-    excel_document.add_item(cell=f"G{num+4}", item="Total cost: ")
+    excel_document.add_item(cell=f"G{num+4}", item="Total price: ")
     excel_document.add_item(
-        cell=f"H{num+4}", item=f"=(SUM(Table1[Cost])/(1-($P${num+4})))*(1+$P${num+5})"
+        cell=f"H{num+4}",
+        item=f"=(SUM(Table1[Price ($)])/(1-($P${num+4})))*(1+$P${num+5})",
     )
     excel_document.format_cell(cell=f"H{num+4}", number_format="$#,##0.00")
 
@@ -239,51 +244,111 @@ def convert(file_names: list):
     Path(f"{program_directory}/images").mkdir(parents=True, exist_ok=True)
 
     with alive_bar(
-        4 + (len(file_names) * 2),
+        2 + (len(file_names) * 4),
         dual_line=True,
         title="Generating",
         force_tty=True,
         theme="smooth",
     ) as bar:
-        bar.text = "-> Getting text, please wait..."
-
-        convert_pdf_to_text(file_names, bar)
-
-        bar.text = "-> Getting images, please wait..."
-        bar()
-
+        part_dictionary = {}
+        part_names = []
+        quantity_numbers = []
+        machining_times_numbers = []
+        weights_numbers = []
+        part_numbers = []
         extract_images_from_pdf(file_names, bar)
+        for file_name in file_names:
+            bar.text = "-> Getting text, please wait..."
 
-        bar.text = "-> Generating excel sheet, please wait..."
-        bar()
+            convert_pdf_to_text([file_name], bar)
 
-        part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
-        file_names = [
-            part_file_path.split("\\")[-1].replace("\n", "").replace(".GEO", "")
-            for part_file_path in part_file_paths
-        ]
+            bar.text = "-> Getting images, please wait..."
+            bar()
 
-        quantity = get_table_value_from_text(regex=quantity_regex)
-        quantity_numbers = [int(time.replace("  NUMBER: ", "")) for time in quantity]
+            bar.text = "-> Generating excel sheet, please wait..."
+            bar()
 
-        machining_times = get_table_value_from_text(regex=machining_time_regex)
-        machining_times_numbers = [
-            float(time.replace("MACHINING TIME: ", "").replace(" min", ""))
-            for time in machining_times
-        ]
+            quantity_multiplier = get_table_value_from_text(regex=sheet_quantity_regex)[0]
+            quantity_multiplier = int(
+                quantity_multiplier.replace("PROGRAMME RUNS:  /  SCRAP: ", "")
+            )
 
-        weights = get_table_value_from_text(regex=weight_regex)
-        weights_numbers = [
-            float(time.replace("WEIGHT: ", "").replace(" lb", "")) for time in weights
-        ]
+            part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
+            for pt in part_file_paths:
+                pt = pt.split("\\")[-1].replace("\n", "").replace(".GEO", "")
+                part_dictionary[pt] = {
+                    "quantity": 0,
+                    "machine_time": 0,
+                    "weight": 0,
+                    "part_number": 0,
+                    "image_index": 0,
+                }
 
-        part_numbers_string = get_table_value_from_text(regex=part_number_regex)
-        part_numbers = [
-            int(time.replace("PART NUMBER: ", "")) for time in part_numbers_string
-        ]
+                part_names.append(pt)
+            # part_names.append([
+            #     part_file_path.split("\\")[-1].replace("\n", "").replace(".GEO", "")
+            #     for part_file_path in part_file_paths
+            # ])
+
+            quantity = get_table_value_from_text(regex=quantity_regex)
+            # quantity_numbers.append([int(time.replace("  NUMBER: ", "")) for time in quantity])
+            for q in quantity:
+                q = q.replace("  NUMBER: ", "")
+                quantity_numbers.append((int(q) * quantity_multiplier))
+
+            machining_times = get_table_value_from_text(regex=machining_time_regex)
+            for mt in machining_times:
+                mt = mt.replace("MACHINING TIME: ", "").replace(" min", "")
+                machining_times_numbers.append(float(mt))
+            # machining_times_numbers.append([
+            #     float(time.replace("MACHINING TIME: ", "").replace(" min", ""))
+            #     for time in machining_times
+            # ])
+
+            weights = get_table_value_from_text(regex=weight_regex)
+            for w in weights:
+                w = w.replace("WEIGHT: ", "").replace(" lb", "")
+                weights_numbers.append(float(w))
+            # weights_numbers.append([
+            #     float(time.replace("WEIGHT: ", "").replace(" lb", "")) for time in weights
+            # ])
+
+            part_numbers_string = get_table_value_from_text(regex=part_number_regex)
+            for pn in part_numbers_string:
+                pn = pn.replace("PART NUMBER: ", "")
+                part_numbers.append(int(pn))
+                # part_numbers.append([
+                #     int(time.replace("PART NUMBER: ", "")) for time in part_numbers_string
+                # ])
+
+        for i, part_name in enumerate(part_names):
+            part_dictionary[part_name]["quantity"] += quantity_numbers[i]
+            part_dictionary[part_name]["machine_time"] = machining_times_numbers[i]
+            part_dictionary[part_name]["weight"] = weights_numbers[i]
+            part_dictionary[part_name]["part_number"] = part_numbers[i]
+            part_dictionary[part_name]["image_index"] = i
+
+        part_names = list(part_dictionary.keys())
+
+        machining_times_numbers.clear()
+        part_numbers.clear()
+        quantity_numbers.clear()
+        weights_numbers.clear()
+        image_index = []
+
+        for part in part_dictionary:
+            machining_times_numbers.append(part_dictionary[part]["machine_time"])
+            part_numbers.append(part_dictionary[part]["part_number"])
+            quantity_numbers.append(part_dictionary[part]["quantity"])
+            weights_numbers.append(part_dictionary[part]["weight"])
+            image_index.append(part_dictionary[part]["image_index"])
 
         generate_excel_file(
-            file_names, machining_times_numbers, weights_numbers, quantity_numbers
+            part_names,
+            machining_times_numbers,
+            weights_numbers,
+            quantity_numbers,
+            image_index,
         )
         bar()
 
