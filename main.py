@@ -6,6 +6,7 @@ import re
 import shutil
 import sys
 import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from time import sleep
 from tkinter import filedialog
@@ -46,7 +47,7 @@ part_number_regex = r"(PART NUMBER: \d{1,})"
 sheet_quantity_regex = r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,})"
 
 
-def convert_pdf_to_text(pdf_paths: list, bar) -> None:
+def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
     with open(f"{program_directory}/output.txt", "w") as f:
         f.write("")
 
@@ -63,7 +64,7 @@ def convert_pdf_to_text(pdf_paths: list, bar) -> None:
                     f.write(page_lines)
                 print(f"\t[+] Getting text from page #{pg+1}.")
         print(f'[+] Finished "{pdf_path}"\t{i}/{len(pdf_paths)}')
-        bar()
+        progress_bar()
 
     with open(f"{program_directory}/output.txt", "r") as f:
         all_text = f.read()
@@ -72,14 +73,14 @@ def convert_pdf_to_text(pdf_paths: list, bar) -> None:
         f.write(all_text.replace(" \n", " "))
 
 
-def extract_images_from_pdf(pdf_paths: list, bar) -> None:
+def extract_images_from_pdf(pdf_paths: list, progress_bar) -> None:
     image_count: int = 0
     for i, pdf_path in enumerate(pdf_paths, start=1):
         print(f'[ ] Processing "{pdf_path}"\t{i}/{len(pdf_paths)}')
         pdf_file = fitz.open(pdf_path)
         for page_index in range(len(pdf_file)):
             page = pdf_file[page_index]
-            if image_list := page.getImageList():
+            if image_list := page.get_images():
                 print(f"\t[+] {len(image_list)} images in page {page_index}")
             else:
                 print("\t[!] No images found on page", page_index)
@@ -93,14 +94,16 @@ def extract_images_from_pdf(pdf_paths: list, bar) -> None:
                 image = Image.open(io.BytesIO(image_bytes))
                 if image.size[0] == 48 and image.size[1] == 48:
                     continue
-                image = image.resize((size_of_picture, size_of_picture), Image.ANTIALIAS)
+                image = image.resize(
+                    (size_of_picture, size_of_picture), Image.Resampling.LANCZOS
+                )
                 image.save(
                     open(f"{program_directory}/images/{image_count}.{image_ext}", "wb")
                 )
                 image_count += 1
             print(f"\t[+] Extracted images from page {page_index}")
         print(f'[+] Finished "{pdf_path}"\t{i}/{len(pdf_paths)}')
-        bar()
+        progress_bar()
 
 
 def get_table_value_from_text(regex) -> list:
@@ -116,10 +119,12 @@ def get_table_value_from_text(regex) -> list:
     return items
 
 
-def generate_excel_file(*args):
+def generate_excel_file(*args, file_name: str):
     print("[ ] Generating excel sheet")
 
-    excel_document = ExcelFile(file_name=f"{program_directory}/excel_sheet.xlsx")
+    excel_document = ExcelFile(
+        file_name=f"{program_directory}/excel files/{file_name}.xlsx"
+    )
 
     excel_document.create_sheet(sheet_name="Sheet 2")
 
@@ -134,10 +139,14 @@ def generate_excel_file(*args):
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
     )
 
-    excel_document.add_image(
-        cell="A1", path_to_image=f"{program_directory}/Piney MGF Logo.png"
-    )
+    excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=67)
+
+    excel_document.add_item(cell="G1", item="Quote Name:")
+    excel_document.set_alignment(
+        cell="G1", horizontal="center", vertical="center", wrap_text=True
+    )
+    excel_document.bold(cell="G1", bold=True)
 
     headers = [
         "Part name",
@@ -149,7 +158,6 @@ def generate_excel_file(*args):
         "Price ($)",
     ]
 
-    excel_document.add_item(cell="G1", item="Quote Name:")
     excel_document.add_list(cell="B2", items=headers)
 
     excel_document.set_cell_width(cell="A1", width=size_of_picture / 6)
@@ -170,10 +178,8 @@ def generate_excel_file(*args):
     excel_document.add_list(cell="D3", items=args[2], horizontal=False)  # Weight
     excel_document.add_list(cell="E3", items=args[3], horizontal=False)  # Quantity
 
-    num: int = 0
-
     for index in range(len(args[0])):
-        row: int = num + 3
+        row: int = index + 3
         excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
         excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
         excel_document.add_dropdown_selection(
@@ -197,7 +203,6 @@ def generate_excel_file(*args):
             excel_document.set_alignment(
                 cell=f"{col}{row}", horizontal="center", vertical="center", wrap_text=True
             )
-
         excel_document.format_cell(cell=f"H{row}", number_format="$#,##0.00")
 
         excel_document.add_image(
@@ -206,26 +211,28 @@ def generate_excel_file(*args):
         )
         excel_document.set_cell_height(cell=f"A{row}", height=size_of_picture / 1.3)
 
-        num += 1
-
     excel_document.add_table(
-        display_name="Table1", theme="TableStyleLight8", location=f"B2:H{num+2}"
+        display_name="Table1", theme="TableStyleLight8", location=f"B2:H{index+3}"
     )
 
-    excel_document.add_item(cell=f"G{num+4}", item="Total price: ")
+    excel_document.add_item(cell=f"G{index+4}", item="Total price: ")
     excel_document.add_item(
-        cell=f"H{num+4}",
-        item=f"=(SUM(Table1[Price ($)])/(1-($P${num+4})))*(1+$P${num+5})",
+        cell=f"H{index+4}",
+        item=f"=(SUM(Table1[Price ($)])/(1-($P${index+4})))*(1+$P${index+5})",
     )
-    excel_document.format_cell(cell=f"H{num+4}", number_format="$#,##0.00")
+    excel_document.set_alignment(
+        cell=f"H{index+4}", horizontal="center", vertical="center", wrap_text=True
+    )
+    excel_document.bold(f"H{index+4}", bold=True)
+    excel_document.format_cell(cell=f"H{index+4}", number_format="$#,##0.00")
 
-    excel_document.add_item(cell=f"O{num + 4}", item="Overhead:")
-    excel_document.add_item(cell=f"P{num + 4}", item=0.1)
-    excel_document.format_cell(cell=f"P{num + 4}", number_format="0%")
+    excel_document.add_item(cell=f"O{index + 4}", item="Overhead:")
+    excel_document.add_item(cell=f"P{index + 4}", item=0.1)
+    excel_document.format_cell(cell=f"P{index + 4}", number_format="0%")
 
-    excel_document.add_item(cell=f"O{num + 5}", item="Markup:")
-    excel_document.add_item(cell=f"P{num + 5}", item=0.5)
-    excel_document.format_cell(cell=f"P{num + 5}", number_format="0%")
+    excel_document.add_item(cell=f"O{index + 5}", item="Markup:")
+    excel_document.add_item(cell=f"P{index + 5}", item=0.5)
+    excel_document.format_cell(cell=f"P{index + 5}", number_format="0%")
 
     excel_document.save()
 
@@ -233,15 +240,10 @@ def generate_excel_file(*args):
 
 
 def convert(file_names: list):
-    try:
-        if Path(f"{program_directory}/excel_sheet.xlsx").is_file():
-            os.remove(f"{program_directory}/excel_sheet.xlsx")
-    except Exception:
-        print("You have this excel spread sheet open, close it and try again.")
-        sleep(5)
-        return
-
     Path(f"{program_directory}/images").mkdir(parents=True, exist_ok=True)
+    Path(f"{program_directory}/excel files").mkdir(parents=True, exist_ok=True)
+    today = datetime.now()
+    current_time = today.strftime("%Y-%m-%d-%H-%M-%S")
 
     with alive_bar(
         2 + (len(file_names) * 4),
@@ -249,24 +251,24 @@ def convert(file_names: list):
         title="Generating",
         force_tty=True,
         theme="smooth",
-    ) as bar:
+    ) as progress_bar:
         part_dictionary = {}
         part_names = []
         quantity_numbers = []
         machining_times_numbers = []
         weights_numbers = []
         part_numbers = []
-        extract_images_from_pdf(file_names, bar)
+
+        progress_bar.text = "-> Getting images, please wait..."
+        extract_images_from_pdf(file_names, progress_bar)
+        progress_bar()
+
         for file_name in file_names:
-            bar.text = "-> Getting text, please wait..."
+            progress_bar.text = "-> Getting text, please wait..."
 
-            convert_pdf_to_text([file_name], bar)
-
-            bar.text = "-> Getting images, please wait..."
-            bar()
-
-            bar.text = "-> Generating excel sheet, please wait..."
-            bar()
+            progress_bar.text = "-> Getting all data, please wait..."
+            convert_pdf_to_text([file_name], progress_bar)
+            progress_bar()
 
             quantity_multiplier = get_table_value_from_text(regex=sheet_quantity_regex)[0]
             quantity_multiplier = int(
@@ -274,52 +276,41 @@ def convert(file_names: list):
             )
 
             part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
-            for pt in part_file_paths:
-                pt = pt.split("\\")[-1].replace("\n", "").replace(".GEO", "")
-                part_dictionary[pt] = {
+            for part_name in part_file_paths:
+                part_name = (
+                    part_name.split("\\")[-1].replace("\n", "").replace(".GEO", "")
+                )
+                part_dictionary[part_name] = {
                     "quantity": 0,
-                    "machine_time": 0,
-                    "weight": 0,
+                    "machine_time": 0.0,
+                    "weight": 0.0,
                     "part_number": 0,
                     "image_index": 0,
                 }
 
-                part_names.append(pt)
-            # part_names.append([
-            #     part_file_path.split("\\")[-1].replace("\n", "").replace(".GEO", "")
-            #     for part_file_path in part_file_paths
-            # ])
+                part_names.append(part_name)
 
-            quantity = get_table_value_from_text(regex=quantity_regex)
-            # quantity_numbers.append([int(time.replace("  NUMBER: ", "")) for time in quantity])
-            for q in quantity:
-                q = q.replace("  NUMBER: ", "")
-                quantity_numbers.append((int(q) * quantity_multiplier))
+            quantities = get_table_value_from_text(regex=quantity_regex)
+            for quantity in quantities:
+                quantity = quantity.replace("  NUMBER: ", "")
+                quantity_numbers.append((int(quantity) * quantity_multiplier))
 
             machining_times = get_table_value_from_text(regex=machining_time_regex)
-            for mt in machining_times:
-                mt = mt.replace("MACHINING TIME: ", "").replace(" min", "")
-                machining_times_numbers.append(float(mt))
-            # machining_times_numbers.append([
-            #     float(time.replace("MACHINING TIME: ", "").replace(" min", ""))
-            #     for time in machining_times
-            # ])
+            for machining_time in machining_times:
+                machining_time = machining_time.replace("MACHINING TIME: ", "").replace(
+                    " min", ""
+                )
+                machining_times_numbers.append(float(machining_time))
 
             weights = get_table_value_from_text(regex=weight_regex)
-            for w in weights:
-                w = w.replace("WEIGHT: ", "").replace(" lb", "")
-                weights_numbers.append(float(w))
-            # weights_numbers.append([
-            #     float(time.replace("WEIGHT: ", "").replace(" lb", "")) for time in weights
-            # ])
+            for weight in weights:
+                weight = weight.replace("WEIGHT: ", "").replace(" lb", "")
+                weights_numbers.append(float(weight))
 
             part_numbers_string = get_table_value_from_text(regex=part_number_regex)
-            for pn in part_numbers_string:
-                pn = pn.replace("PART NUMBER: ", "")
-                part_numbers.append(int(pn))
-                # part_numbers.append([
-                #     int(time.replace("PART NUMBER: ", "")) for time in part_numbers_string
-                # ])
+            for part_number in part_numbers_string:
+                part_number = part_number.replace("PART NUMBER: ", "")
+                part_numbers.append(int(part_number))
 
         for i, part_name in enumerate(part_names):
             part_dictionary[part_name]["quantity"] += quantity_numbers[i]
@@ -328,6 +319,7 @@ def convert(file_names: list):
             part_dictionary[part_name]["part_number"] = part_numbers[i]
             part_dictionary[part_name]["image_index"] = i
 
+        part_names.clear()
         part_names = list(part_dictionary.keys())
 
         machining_times_numbers.clear()
@@ -343,20 +335,24 @@ def convert(file_names: list):
             weights_numbers.append(part_dictionary[part]["weight"])
             image_index.append(part_dictionary[part]["image_index"])
 
+        progress_bar.text = "-> Generating excel sheet, please wait..."
+        progress_bar()
+
         generate_excel_file(
             part_names,
             machining_times_numbers,
             weights_numbers,
             quantity_numbers,
             image_index,
+            file_name=current_time,
         )
-        bar()
 
-        print(f'Opening "{program_directory}/excel_sheet.xlsx"')
+        print(f'Opening "{program_directory}/excel files/{current_time}.xlsx"')
 
-        bar()
+        progress_bar()
+        progress_bar.text = "-> Finished! :)"
 
-        os.startfile(f'"{program_directory}/excel_sheet.xlsx"')
+        os.startfile(f'"{program_directory}/excel files/{current_time}.xlsx"')
 
         shutil.rmtree(f"{program_directory}/images")
 

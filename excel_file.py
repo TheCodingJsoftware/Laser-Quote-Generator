@@ -3,7 +3,7 @@ import re
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.drawing import image
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, Font
 from openpyxl.utils.cell import column_index_from_string, get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -182,6 +182,18 @@ class ExcelFile:
         cell = self.worksheet.cell(row, col_index)
         cell.number_format = number_format
 
+    def bold(self, cell: str, bold: bool) -> None:
+        """Sets cell font to bold
+
+        Args:
+            cell (str): Such as "A1"
+            bold (bool): Bold or not.
+        """
+        col, row = self.parse_cell(cell=cell)
+        col_index = column_index_from_string(col)
+        cell = self.worksheet.cell(row, col_index)
+        cell.font = Font(bold=bold)
+
     def set_alignment(
         self, cell: str, horizontal: str, vertical: str, wrap_text: bool
     ) -> None:
@@ -230,7 +242,6 @@ class ExcelFile:
             showRowStripes=True,
             showColumnStripes=False,
         )
-        table.autoFilter = None
         table.tableStyleInfo = style
         self.worksheet.add_table(table)
 
