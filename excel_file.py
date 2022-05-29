@@ -77,6 +77,23 @@ class ExcelFile:
                     sheet[f"{col}{row}"] = item
                 row += 1
 
+    def add_item_to_sheet(self, sheet_name: str, cell: str, item) -> None:
+        """Add any item to any cell in the specified sheet
+
+        Args:
+            cell (str): Such as "A1"
+            item (any): Any (item, str, int, float)
+        """
+        col, row = self.parse_cell(cell=cell)
+        sheet = self.workbook.get_sheet_by_name(sheet_name)
+        try:
+            if item.is_integer():
+                sheet[f"{col}{row}"] = int(item)
+            elif not item.is_integer():
+                sheet[f"{col}{row}"] = float(item)
+        except AttributeError:
+            sheet[f"{col}{row}"] = item
+
     def add_list(self, cell: str, items: list, horizontal: bool = True) -> None:
         """Adds a list of items to the current workbook
 

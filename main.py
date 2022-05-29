@@ -1,6 +1,7 @@
 import configparser
 import contextlib
 import io
+import json
 import os
 import re
 import shutil
@@ -42,9 +43,12 @@ size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
 geofile_name_regex = r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
 weight_regex = r"(WEIGHT: \d{1,}.\d{1,} lb)"
+surface_area_regex = r"(SURFACE: \d{1,}.\d{1,}  in2)"
+cutting_length_regex = r"(CUTTING LENGTH: \d{1,}.\d{1,}  in)"
 quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
 sheet_quantity_regex = r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,})"
+piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
 
 
 def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
@@ -126,17 +130,54 @@ def generate_excel_file(*args, file_name: str):
         file_name=f"{program_directory}/excel files/{file_name}.xlsx"
     )
 
-    excel_document.create_sheet(sheet_name="Sheet 2")
-
-    excel_document.add_list_to_sheet(sheet_name="Sheet 2", cell="A1", items=materials)
-    excel_document.add_list_to_sheet(sheet_name="Sheet 2", cell="A2", items=gauges)
+    excel_document.create_sheet(sheet_name="info")
+    excel_document.add_list_to_sheet(sheet_name="info", cell="A1", items=materials)
+    excel_document.add_list_to_sheet(sheet_name="info", cell="A2", items=gauges)
     excel_document.add_list_to_sheet(
-        sheet_name="Sheet 2", cell="A3", items=["Nitrogen", "CO2"]
+        sheet_name="info", cell="A3", items=["Nitrogen", "CO2"]
     )
     excel_document.add_list_to_sheet(
-        sheet_name="Sheet 2",
+        sheet_name="info",
         cell="A4",
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info",
+        cell="A5",
+        items=["Total parts: ", "", "", len(args[0])],
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info",
+        cell="A6",
+        items=["Total machine time (min): ", "", "", sum(args[1]) * sum(args[3])],
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info",
+        cell="A7",
+        items=["Total weight (lb): ", "", "", sum(args[2]) * sum(args[3])],
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info",
+        cell="A8",
+        items=["Total quantities: ", "", "", sum(args[3])],
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info",
+        cell="A9",
+        items=["Total surface area (in2): ", "", "", sum(args[6]) * sum(args[3])],
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info",
+        cell="A10",
+        items=["Total cutting length (in): ", "", "", sum(args[7]) * sum(args[3])],
+    )
+    excel_document.add_item_to_sheet(
+        sheet_name="info",
+        cell="A11",
+        item=f"{len(args[5])} files loaded",
+    )
+    excel_document.add_list_to_sheet(
+        sheet_name="info", cell="A12", items=args[5], horizontal=False
     )
 
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
@@ -171,7 +212,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell="O2", item="Laser cutting:")
     excel_document.add_item(cell="P2", item="Nitrogen")
     excel_document.add_dropdown_selection(
-        cell="P2", type="list", formula="'Sheet 2'!$A$3:$B$3"
+        cell="P2", type="list", formula="'info'!$A$3:$B$3"
     )
     excel_document.add_list(cell="B3", items=args[0], horizontal=False)  # File name
     excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time
@@ -183,15 +224,15 @@ def generate_excel_file(*args, file_name: str):
         excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
         excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
         excel_document.add_dropdown_selection(
-            cell=f"F{row}", type="list", formula="'Sheet 2'!$A$1:$H$1"
+            cell=f"F{row}", type="list", formula="'info'!$A$1:$H$1"
         )
         excel_document.add_dropdown_selection(
-            cell=f"G{row}", type="list", formula="'Sheet 2'!$A$2:$K$2"
+            cell=f"G{row}", type="list", formula="'info'!$A$2:$K$2"
         )
 
         cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D{row}"
         cost_for_time = (
-            f"(INDEX('Sheet 2'!$A$4:$B$4,MATCH($P$2,'Sheet 2'!$A$3:$B$3,0))/60)*$C{row}"
+            f"(INDEX('info'!$A$4:$B$4,MATCH($P$2,'info'!$A$3:$B$3,0))/60)*$C{row}"
         )
         quantity = f"$E{row}"
 
@@ -239,6 +280,11 @@ def generate_excel_file(*args, file_name: str):
     print("[+] Excel sheet generated.")
 
 
+def save_json_file(dictionary: dict, file_name: str) -> None:
+    with open(f"{program_directory}/excel files/{file_name}.json", "w") as fp:
+        json.dump(dictionary, fp, sort_keys=True, indent=4)
+
+
 def convert(file_names: list):
     Path(f"{program_directory}/images").mkdir(parents=True, exist_ok=True)
     Path(f"{program_directory}/excel files").mkdir(parents=True, exist_ok=True)
@@ -258,6 +304,9 @@ def convert(file_names: list):
         machining_times_numbers = []
         weights_numbers = []
         part_numbers = []
+        surface_areas_numbers = []
+        cutting_lengths_numbers = []
+        piercing_time_numbers = []
 
         progress_bar.text = "-> Getting images, please wait..."
         extract_images_from_pdf(file_names, progress_bar)
@@ -278,7 +327,10 @@ def convert(file_names: list):
             part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
             for part_name in part_file_paths:
                 part_name = (
-                    part_name.split("\\")[-1].replace("\n", "").replace(".GEO", "")
+                    part_name.split("\\")[-1]
+                    .replace("\n", "")
+                    .replace(".GEO", "")
+                    .strip()
                 )
                 part_dictionary[part_name] = {
                     "quantity": 0,
@@ -286,6 +338,10 @@ def convert(file_names: list):
                     "weight": 0.0,
                     "part_number": 0,
                     "image_index": 0,
+                    "surface_area": 0,
+                    "cutting_length": 0,
+                    "file_name": file_name,
+                    "piercing_time": 0.0,
                 }
 
                 part_names.append(part_name)
@@ -307,6 +363,25 @@ def convert(file_names: list):
                 weight = weight.replace("WEIGHT: ", "").replace(" lb", "")
                 weights_numbers.append(float(weight))
 
+            surface_areas = get_table_value_from_text(regex=surface_area_regex)
+            for surface_area in surface_areas:
+                surface_area = surface_area.replace("SURFACE: ", "").replace("  in2", "")
+                surface_areas_numbers.append(float(surface_area))
+
+            cutting_lengths = get_table_value_from_text(regex=cutting_length_regex)
+            for cutting_length in cutting_lengths:
+                cutting_length = cutting_length.replace("CUTTING LENGTH: ", "").replace(
+                    "  in", ""
+                )
+                cutting_lengths_numbers.append(float(cutting_length))
+
+            piercing_times = get_table_value_from_text(regex=piercing_time_regex)
+            for piercing_time in piercing_times:
+                piercing_time = piercing_time.replace("PIERCING TIME ", "").replace(
+                    "  s", ""
+                )
+                piercing_time_numbers.append(float(piercing_time))
+
             part_numbers_string = get_table_value_from_text(regex=part_number_regex)
             for part_number in part_numbers_string:
                 part_number = part_number.replace("PART NUMBER: ", "")
@@ -318,6 +393,9 @@ def convert(file_names: list):
             part_dictionary[part_name]["weight"] = weights_numbers[i]
             part_dictionary[part_name]["part_number"] = part_numbers[i]
             part_dictionary[part_name]["image_index"] = i
+            part_dictionary[part_name]["surface_area"] = surface_areas_numbers[i]
+            part_dictionary[part_name]["cutting_length"] = cutting_lengths_numbers[i]
+            part_dictionary[part_name]["piercing_time"] = piercing_time_numbers[i]
 
         part_names.clear()
         part_names = list(part_dictionary.keys())
@@ -344,8 +422,13 @@ def convert(file_names: list):
             weights_numbers,
             quantity_numbers,
             image_index,
+            file_names,
+            surface_areas_numbers,
+            cutting_lengths_numbers,
             file_name=current_time,
         )
+
+        save_json_file(dictionary=part_dictionary, file_name=current_time)
 
         print(f'Opening "{program_directory}/excel files/{current_time}.xlsx"')
 
