@@ -35,4 +35,4 @@ pyinstaller main.spec
 
 ## Demo
 
-![image](https://user-images.githubusercontent.com/25397800/170836904-c6d7e6b2-5ea5-477b-9adb-1993fababac7.png)
+![image](https://user-images.githubusercontent.com/25397800/173171036-f4ea691e-c353-44f8-8d15-17a712651ae0.png)

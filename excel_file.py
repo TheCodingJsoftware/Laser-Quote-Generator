@@ -1,20 +1,29 @@
+import datetime
 import re
 
-import openpyxl
-from openpyxl import Workbook
-from openpyxl.drawing import image
-from openpyxl.styles import Alignment, Font
+import xlsxwriter
 from openpyxl.utils.cell import column_index_from_string, get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
 class ExcelFile:
     """Create excel files easier with openpyxl"""
 
     def __init__(self, file_name: str) -> None:
-        self.workbook = Workbook()
-        self.worksheet = self.workbook.active
+        self.workbook = xlsxwriter.Workbook(file_name)
+        self.workbook.set_properties(
+            {
+                "title": "Laser Quote",
+                "subject": "Quote for parts",
+                "author": "Jared Gross",
+                "manager": "Jared Gross",
+                "company": "TheCodingJ'software",
+                "category": "Laser Quotes",
+                "keywords": "Laser, Quotes, Laser Quotes",
+                "comments": "Created with Python, Magic and XlsxWriter",
+            }
+        )
+        self.worksheet = self.workbook.add_worksheet()
+        self.info_worksheet = self.workbook.add_worksheet()
 
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
         self.file_name = file_name
@@ -33,19 +42,8 @@ class ExcelFile:
         if matches := re.search(self.cell_regex, cell):
             return (matches[1], int(matches[2]))
 
-    def create_sheet(self, sheet_name: str) -> None:
-        """Creates a new sheet within the excel work book
-
-        Args:
-            sheet_name (str): name of the sheet
-        """
-        self.workbook.create_sheet(sheet_name)
-
-    def add_list_to_sheet(
-        self, sheet_name: str, cell: str, items: list, horizontal: bool = True
-    ) -> None:
+    def add_list_to_sheet(self, cell: str, items: list, horizontal: bool = True) -> None:
         """Adds a list of items to the specfied sheet
-
         Args:
             sheet_name (str): Name of the sheet you want to add a list to.
             cell (str): specfied cell location, such as "A1"
@@ -53,46 +51,43 @@ class ExcelFile:
             horizontal (bool, optional): Allows for inputing lists vertical(False) or horizontal(True). Defaults to True.
         """
         col, row = self.parse_cell(cell=cell)
-        sheet = self.workbook.get_sheet_by_name(sheet_name)
         if horizontal:
             col_index = column_index_from_string(col)
             for item in items:
                 col_str = get_column_letter(col_index)
                 try:
                     if item.is_integer():
-                        sheet[f"{col_str}{row}"] = int(item)
+                        self.add_item_to_sheet(f"{col_str}{row}", item)
                     elif not item.is_integer():
-                        sheet[f"{col_str}{row}"] = float(item)
+                        self.add_item_to_sheet(f"{col_str}{row}", item)
                 except AttributeError:
-                    sheet[f"{col_str}{row}"] = item
+                    self.add_item_to_sheet(f"{col_str}{row}", item)
                 col_index += 1
         else:
             for item in items:
                 try:
                     if item.is_integer():
-                        sheet[f"{col}{row}"] = int(item)
+                        self.add_item_to_sheet(f"{col}{row}", item)
                     elif not item.is_integer():
-                        sheet[f"{col}{row}"] = float(item)
+                        self.add_item_to_sheet(f"{col}{row}", item)
                 except AttributeError:
-                    sheet[f"{col}{row}"] = item
+                    self.add_item_to_sheet(f"{col}{row}", item)
                 row += 1
 
-    def add_item_to_sheet(self, sheet_name: str, cell: str, item) -> None:
+    def add_item_to_sheet(self, cell: str, item) -> None:
         """Add any item to any cell in the specified sheet
-
         Args:
             cell (str): Such as "A1"
             item (any): Any (item, str, int, float)
         """
         col, row = self.parse_cell(cell=cell)
-        sheet = self.workbook.get_sheet_by_name(sheet_name)
         try:
             if item.is_integer():
-                sheet[f"{col}{row}"] = int(item)
+                self.info_worksheet.write(f"{col}{row}", int(item))
             elif not item.is_integer():
-                sheet[f"{col}{row}"] = float(item)
+                self.info_worksheet.write(f"{col}{row}", float(item))
         except AttributeError:
-            sheet[f"{col}{row}"] = item
+            self.info_worksheet.write(f"{col}{row}", item)
 
     def add_list(self, cell: str, items: list, horizontal: bool = True) -> None:
         """Adds a list of items to the current workbook
@@ -108,26 +103,14 @@ class ExcelFile:
             col_index = column_index_from_string(col)
             for item in items:
                 col_str = get_column_letter(col_index)
-                try:
-                    if item.is_integer():
-                        self.worksheet[f"{col_str}{row}"] = int(item)
-                    elif not item.is_integer():
-                        self.worksheet[f"{col_str}{row}"] = float(item)
-                except AttributeError:
-                    self.worksheet[f"{col_str}{row}"] = item
+                self.add_item(f"{col_str}{row}", item)
                 col_index += 1
         else:
             for item in items:
-                try:
-                    if item.is_integer():
-                        self.worksheet[f"{col}{row}"] = int(item)
-                    elif not item.is_integer():
-                        self.worksheet[f"{col}{row}"] = float(item)
-                except AttributeError:
-                    self.worksheet[f"{col}{row}"] = item
+                self.add_item(f"{col}{row}", item)
                 row += 1
 
-    def add_item(self, cell: str, item) -> None:
+    def add_item(self, cell: str, item, number_format=None) -> None:
         """Add any item to any cell in the excel work book
 
         Args:
@@ -135,13 +118,21 @@ class ExcelFile:
             item (any): Any (item, str, int, float)
         """
         col, row = self.parse_cell(cell=cell)
+
+        if number_format is None:
+            cell_format = self.workbook.add_format()
+        else:
+            cell_format = self.workbook.add_format({"num_format": number_format})
+        cell_format.set_align("center")
+        cell_format.set_align("vcenter")
+        cell_format.set_text_wrap()
         try:
             if item.is_integer():
-                self.worksheet[f"{col}{row}"] = int(item)
+                self.worksheet.write(f"{col}{row}", int(item), cell_format)
             elif not item.is_integer():
-                self.worksheet[f"{col}{row}"] = float(item)
+                self.worksheet.write(f"{col}{row}", float(item), cell_format)
         except AttributeError:
-            self.worksheet[f"{col}{row}"] = item
+            self.worksheet.write(f"{col}{row}", item, cell_format)
 
     def set_cell_width(self, cell: str, width: int) -> None:
         """Change teh width of any cell, only the column is, the row is not used.
@@ -151,7 +142,7 @@ class ExcelFile:
             width (int): The width you want that column to be
         """
         col, _ = self.parse_cell(cell=cell)
-        self.worksheet.column_dimensions[col].width = width
+        self.worksheet.set_column(f"{col}:{col}", int(width))
 
     def set_cell_height(self, cell: str, height: int) -> None:
         """Change teh width of any cell, only the row is, the column is not used.
@@ -161,19 +152,8 @@ class ExcelFile:
             height (int): The height you want that row to be
         """
         _, row = self.parse_cell(cell=cell)
-        self.worksheet.row_dimensions[row].height = height
 
-    def set_cell_size(self, cell: str, height: int, width: int) -> None:
-        """Change the size of any cell
-
-        Args:
-            cell (str): Such as "A1
-            height (int): The height you want that cell
-            width (int): The width you want that cell
-        """
-        col, row = self.parse_cell(cell=cell)
-        self.worksheet.column_dimensions[col].width = width
-        self.worksheet.row_dimensions[row].height = height
+        self.worksheet.set_row(row - 1, height)
 
     def add_image(self, cell: str, path_to_image: str) -> None:
         """Add an image to any cell
@@ -183,53 +163,11 @@ class ExcelFile:
             path_to_image (str): The direct path to the image
         """
         col, row = self.parse_cell(cell=cell)
-        img = image.Image(path_to_image)
-        img.anchor = f"{col}{row}"
-        self.worksheet.add_image(img)
-
-    def format_cell(self, cell: str, number_format: str) -> None:
-        """Set the number format for any cell
-
-        Args:
-            cell (str): Such as "A1"
-            number_format (str): The format you want, such as "$#,##0.00"
-        """
-        col, row = self.parse_cell(cell=cell)
-        col_index = column_index_from_string(col)
-        cell = self.worksheet.cell(row, col_index)
-        cell.number_format = number_format
-
-    def bold(self, cell: str, bold: bool) -> None:
-        """Sets cell font to bold
-
-        Args:
-            cell (str): Such as "A1"
-            bold (bool): Bold or not.
-        """
-        col, row = self.parse_cell(cell=cell)
-        col_index = column_index_from_string(col)
-        cell = self.worksheet.cell(row, col_index)
-        cell.font = Font(bold=bold)
-
-    def set_alignment(
-        self, cell: str, horizontal: str, vertical: str, wrap_text: bool
-    ) -> None:
-        """Set the text alignment for any cell
-
-        Args:
-            cell (str): Such as "A1"
-            horizontal (str): 'left', 'center', 'right'
-            vertical (str): 'left', 'center', 'right'
-            wrap_text (bool): True/False
-        """
-        col, row = self.parse_cell(cell=cell)
-        col_index = column_index_from_string(col)
-        cell = self.worksheet.cell(row, col_index)
-        cell.alignment = Alignment(
-            horizontal=horizontal, vertical=vertical, wrap_text=wrap_text
+        self.worksheet.insert_image(
+            f"{col}{row}", path_to_image, {"x_scale": 1, "y_scale": 1}
         )
 
-    def add_dropdown_selection(self, cell: str, type: str, formula: str) -> None:
+    def add_dropdown_selection(self, cell: str, type: str, location: str) -> None:
         """Add a data validation drop down selection for any cell
 
         Args:
@@ -238,11 +176,13 @@ class ExcelFile:
             formula (str): the location of where the list is located such as: "A1:C1"
         """
         col, row = self.parse_cell(cell=cell)
-        dropdown = DataValidation(type=type, formula1=formula)
-        self.worksheet.add_data_validation(dropdown)
-        dropdown.add(self.worksheet[f"${col}${row}"])
+        self.worksheet.data_validation(
+            f"${col}${row}", {"validate": type, "source": location}
+        )
 
-    def add_table(self, display_name: str, theme: str, location: str) -> None:
+    def add_table(
+        self, display_name: str, theme: str, location: str, headers: list
+    ) -> None:
         """Add a table to the excel sheet
 
         Args:
@@ -250,17 +190,25 @@ class ExcelFile:
             theme (str): Any color theme provided by excel itself
             location (str): The location you want to format the table, such as: "A1:B3"
         """
-        table = Table(displayName=display_name, ref=location)
-
-        style = TableStyleInfo(
-            name=theme,
-            showFirstColumn=False,
-            showLastColumn=False,
-            showRowStripes=True,
-            showColumnStripes=False,
+        self.worksheet.add_table(
+            location,
+            {
+                "total_row": True,
+                "style": theme,
+                "first_column": False,
+                "columns": [
+                    {"header": headers[0]},
+                    {"header": headers[1]},
+                    {"header": headers[2]},
+                    {"header": headers[3]},
+                    {"header": headers[4]},
+                    {"header": headers[5]},
+                    {"header": headers[6]},
+                    {"header": headers[7]},
+                    {"header": headers[8]},
+                ],
+            },
         )
-        table.tableStyleInfo = style
-        self.worksheet.add_table(table)
 
     def set_col_hidden(self, cell: str, hidden: bool = True) -> None:
         """Hide column
@@ -270,7 +218,7 @@ class ExcelFile:
             visible (bool): True or False
         """
         col, _ = self.parse_cell(cell=cell)
-        self.worksheet.column_dimensions[col].hidden = hidden
+        self.worksheet.set_column(f"{col}:{col}", None, None, {"hidden": 1})
 
     def set_row_hidden(self, cell: str, hidden: bool = True) -> None:
         """Hide row
@@ -280,8 +228,11 @@ class ExcelFile:
             visible (bool): True or False
         """
         _, row = self.parse_cell(cell=cell)
-        self.worksheet.row_dimensions[col].hidden = hidden
+        self.worksheet.set_row(row, None, None, {"hidden": 1})
+
+    def add_macro(self, macro_path) -> None:
+        self.workbook.add_vba_project(macro_path)
 
     def save(self) -> None:
         """Save excel file."""
-        self.workbook.save(self.file_name)
+        self.workbook.close()

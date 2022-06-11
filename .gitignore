@@ -135,3 +135,5 @@ test.py
 output.txt
 *json
 *.ini
+*.xlsx
+*.xlsm

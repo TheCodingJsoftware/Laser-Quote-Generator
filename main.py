@@ -13,13 +13,7 @@ from time import sleep
 from tkinter import filedialog
 
 import fitz  # PyMuPDF
-import openpyxl
 from alive_progress import alive_bar
-from openpyxl import Workbook
-from openpyxl.drawing import image
-from openpyxl.styles import Alignment
-from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.worksheet.table import Table, TableStyleInfo
 from PIL import Image
 from rich import print
 
@@ -38,7 +32,8 @@ materials = global_variables["GLOBAL VARIABLES"]["materials"].split(",")
 gauges = global_variables["GLOBAL VARIABLES"]["gauges"].split(",")
 path_to_sheet_prices = global_variables["GLOBAL VARIABLES"]["path_to_sheet_prices"]
 size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
-
+PROFIT_MARGIN: float = float(global_variables["GLOBAL VARIABLES"]["profit_margin"])
+OVERHEAD: float = float(global_variables["GLOBAL VARIABLES"]["overhead"])
 
 geofile_name_regex = r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
@@ -52,6 +47,13 @@ piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
 
 
 def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
+    """
+    It opens the PDF file, gets the text from each page, and writes it to a text file
+
+    Args:
+      pdf_paths (list): list
+      progress_bar: a function that will be called after each PDF is processed.
+    """
     with open(f"{program_directory}/output.txt", "w") as f:
         f.write("")
 
@@ -78,6 +80,14 @@ def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
 
 
 def extract_images_from_pdf(pdf_paths: list, progress_bar) -> None:
+    """
+    It opens a PDF file, extracts all the images from it, resizes them to a specific size, and saves
+    them to a folder
+
+    Args:
+      pdf_paths (list): list = list of paths to the PDF files
+      progress_bar: a function that prints a progress bar
+    """
     image_count: int = 0
     for i, pdf_path in enumerate(pdf_paths, start=1):
         print(f'[ ] Processing "{pdf_path}"\t{i}/{len(pdf_paths)}')
@@ -111,6 +121,15 @@ def extract_images_from_pdf(pdf_paths: list, progress_bar) -> None:
 
 
 def get_table_value_from_text(regex) -> list:
+    """
+    It takes a regular expression and returns a list of all the matches
+
+    Args:
+      regex: The regex to search for.
+
+    Returns:
+      A list of all the values in the table.
+    """
     with open(f"{program_directory}/output.txt", "r") as f:
         text = f.read()
 
@@ -124,70 +143,63 @@ def get_table_value_from_text(regex) -> list:
 
 
 def generate_excel_file(*args, file_name: str):
+    """
+    It takes in a bunch of lists and generates an excel file with a bunch of data
+
+    Args:
+      file_name (str): str = The name of the excel file.
+    """
     print("[ ] Generating excel sheet")
 
     excel_document = ExcelFile(
-        file_name=f"{program_directory}/excel files/{file_name}.xlsx"
+        file_name=f"{program_directory}/excel files/{file_name}.xlsm"
     )
-
-    excel_document.create_sheet(sheet_name="info")
-    excel_document.add_list_to_sheet(sheet_name="info", cell="A1", items=materials)
-    excel_document.add_list_to_sheet(sheet_name="info", cell="A2", items=gauges)
+    # excel_document.create_sheet(sheet_name="info")
+    excel_document.add_list_to_sheet(cell="A1", items=materials)
+    excel_document.add_list_to_sheet(cell="A2", items=gauges)
+    excel_document.add_list_to_sheet(cell="A3", items=["Nitrogen", "CO2"])
     excel_document.add_list_to_sheet(
-        sheet_name="info", cell="A3", items=["Nitrogen", "CO2"]
-    )
-    excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A4",
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
     )
     excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A5",
         items=["Total parts: ", "", "", len(args[0])],
     )
     excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A6",
         items=["Total machine time (min): ", "", "", sum(args[1]) * sum(args[3])],
     )
     excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A7",
         items=["Total weight (lb): ", "", "", sum(args[2]) * sum(args[3])],
     )
     excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A8",
         items=["Total quantities: ", "", "", sum(args[3])],
     )
     excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A9",
         items=["Total surface area (in2): ", "", "", sum(args[6]) * sum(args[3])],
     )
     excel_document.add_list_to_sheet(
-        sheet_name="info",
         cell="A10",
         items=["Total cutting length (in): ", "", "", sum(args[7]) * sum(args[3])],
     )
     excel_document.add_item_to_sheet(
-        sheet_name="info",
         cell="A11",
         item=f"{len(args[5])} files loaded",
     )
-    excel_document.add_list_to_sheet(
-        sheet_name="info", cell="A12", items=args[5], horizontal=False
-    )
+    excel_document.add_list_to_sheet(cell="A12", items=args[5], horizontal=False)
 
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
-    excel_document.set_cell_height(cell="A1", height=67)
+    excel_document.set_cell_height(cell="A1", height=65)
 
     excel_document.add_item(cell="G1", item="Quote Name:")
-    excel_document.set_alignment(
-        cell="G1", horizontal="center", vertical="center", wrap_text=True
-    )
-    excel_document.bold(cell="G1", bold=True)
+    # excel_document.set_alignment(
+    #     cell="G1", horizontal="center", vertical="center", wrap_text=True
+    # )
+    # excel_document.bold(cell="G1", bold=True)
 
     headers = [
         "Part name",
@@ -196,23 +208,26 @@ def generate_excel_file(*args, file_name: str):
         "Quantity",
         "Material",
         "Gauge",
-        "Price ($)",
+        "COGS",
+        "Overhead",
+        "Revenue",
     ]
 
-    excel_document.add_list(cell="B2", items=headers)
+    # excel_document.add_list(cell="B1", items=headers)
 
     excel_document.set_cell_width(cell="A1", width=size_of_picture / 6)
     excel_document.set_cell_width(cell="B1", width=22)
     excel_document.set_col_hidden(cell="C1", hidden=True)
     excel_document.set_col_hidden(cell="D1", hidden=True)
+    excel_document.set_col_hidden(cell="H1", hidden=True)
+    excel_document.set_col_hidden(cell="I1", hidden=True)
     excel_document.set_cell_width(cell="O1", width=15)
     excel_document.set_cell_width(cell="G1", width=15)
-    excel_document.set_cell_width(cell="H1", width=15)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
     excel_document.add_item(cell="P2", item="Nitrogen")
     excel_document.add_dropdown_selection(
-        cell="P2", type="list", formula="'info'!$A$3:$B$3"
+        cell="P2", type="list", location="'Sheet2'!$A$3:$B$3"
     )
     excel_document.add_list(cell="B3", items=args[0], horizontal=False)  # File name
     excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time
@@ -224,68 +239,94 @@ def generate_excel_file(*args, file_name: str):
         excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
         excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
         excel_document.add_dropdown_selection(
-            cell=f"F{row}", type="list", formula="'info'!$A$1:$H$1"
+            cell=f"F{row}", type="list", location="'Sheet2'!$A$1:$H$1"
         )
         excel_document.add_dropdown_selection(
-            cell=f"G{row}", type="list", formula="'info'!$A$2:$K$2"
+            cell=f"G{row}", type="list", location="'Sheet2'!$A$2:$K$2"
         )
 
         cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D{row}"
         cost_for_time = (
-            f"(INDEX('info'!$A$4:$B$4,MATCH($P$2,'info'!$A$3:$B$3,0))/60)*$C{row}"
+            f"(INDEX('Sheet2'!$A$4:$B$4,MATCH($P$2,'Sheet2'!$A$3:$B$3,0))/60)*$C{row}"
         )
         quantity = f"$E{row}"
-
         excel_document.add_item(
-            cell=f"H{row}", item=f"=({cost_for_weight}+{cost_for_time})*{quantity}"
+            cell=f"H{row}",
+            item=f"=({cost_for_weight}+{cost_for_time})*{quantity}",
+            number_format="$#,##0.00",
         )  # Cost
 
-        for col in ["B", "C", "D", "E", "F", "G", "H"]:
-            excel_document.set_alignment(
-                cell=f"{col}{row}", horizontal="center", vertical="center", wrap_text=True
-            )
-        excel_document.format_cell(cell=f"H{row}", number_format="$#,##0.00")
+        overhead = f"$J{row}*($P${len(args[0])+3})"
+        excel_document.add_item(
+            cell=f"I{row}",
+            item=f"={overhead}",
+            number_format="$#,##0.00",
+        )  # Overhead
+
+        revenue = f"($H{row}+$I{row})/(1-$P${len(args[0])+4})"
+        excel_document.add_item(
+            cell=f"J{row}",
+            item=f"={revenue}",
+            number_format="$#,##0.00",
+        )  # Revenue
 
         excel_document.add_image(
             cell=f"A{row}",
             path_to_image=f"{program_directory}/images/{args[4][index]}.jpeg",
         )
-        excel_document.set_cell_height(cell=f"A{row}", height=size_of_picture / 1.3)
+        excel_document.set_cell_height(cell=f"A{row}", height=size_of_picture / 1.2)
 
     excel_document.add_table(
-        display_name="Table1", theme="TableStyleLight8", location=f"B2:H{index+3}"
+        display_name="Table1",
+        theme="TableStyleLight8",
+        location=f"B2:J{index+3}",
+        headers=headers,
     )
 
-    excel_document.add_item(cell=f"G{index+4}", item="Total price: ")
+    excel_document.add_item(cell=f"G{index+4}", item="Total: ")
     excel_document.add_item(
-        cell=f"H{index+4}",
-        item=f"=(SUM(Table1[Price ($)])/(1-($P${index+4})))*(1+$P${index+5})",
+        cell=f"J{index+4}",
+        item="=SUM(Table1[Revenue])",
+        number_format="$#,##0.00",
     )
-    excel_document.set_alignment(
-        cell=f"H{index+4}", horizontal="center", vertical="center", wrap_text=True
-    )
-    excel_document.bold(f"H{index+4}", bold=True)
-    excel_document.format_cell(cell=f"H{index+4}", number_format="$#,##0.00")
 
     excel_document.add_item(cell=f"O{index + 4}", item="Overhead:")
-    excel_document.add_item(cell=f"P{index + 4}", item=0.1)
-    excel_document.format_cell(cell=f"P{index + 4}", number_format="0%")
+    excel_document.add_item(cell=f"P{index + 4}", item=OVERHEAD, number_format="0%")
+    # excel_document.format_cell(cell=f"P{index + 4}", number_format="0%")
 
-    excel_document.add_item(cell=f"O{index + 5}", item="Markup:")
-    excel_document.add_item(cell=f"P{index + 5}", item=0.5)
-    excel_document.format_cell(cell=f"P{index + 5}", number_format="0%")
+    excel_document.add_item(cell=f"O{index + 5}", item="Profit Margin:")
+    excel_document.add_item(cell=f"P{index + 5}", item=PROFIT_MARGIN, number_format="0%")
+    # excel_document.format_cell(cell=f"P{index + 5}", number_format="0%")
 
+    print("\t[ ] Injecting macro.bin")
+    excel_document.add_macro(macro_path=f"{program_directory}/macro.bin")
+
+    print("\t[+] Injected macro.bin")
     excel_document.save()
-
     print("[+] Excel sheet generated.")
 
 
 def save_json_file(dictionary: dict, file_name: str) -> None:
+    """
+    It takes a dictionary and a file name as arguments, and then saves the dictionary as a json file
+    with the given file name
+
+    Args:
+      dictionary (dict): The dictionary you want to save.
+      file_name (str): The name of the file you want to save.
+    """
     with open(f"{program_directory}/excel files/{file_name}.json", "w") as fp:
         json.dump(dictionary, fp, sort_keys=True, indent=4)
 
 
-def convert(file_names: list):
+def convert(file_names: list):  # sourcery skip: low-code-quality
+    """
+    It takes a list of file names, extracts the images from the PDFs, converts the PDFs to text,
+    extracts the data from the text, and then generates an excel file and a JSON file
+
+    Args:
+      file_names (list): list
+    """
     Path(f"{program_directory}/images").mkdir(parents=True, exist_ok=True)
     Path(f"{program_directory}/excel files").mkdir(parents=True, exist_ok=True)
     today = datetime.now()
@@ -430,12 +471,12 @@ def convert(file_names: list):
 
         save_json_file(dictionary=part_dictionary, file_name=current_time)
 
-        print(f'Opening "{program_directory}/excel files/{current_time}.xlsx"')
+        print(f'Opening "{program_directory}/excel files/{current_time}.xlsm"')
 
         progress_bar()
         progress_bar.text = "-> Finished! :)"
 
-        os.startfile(f'"{program_directory}/excel files/{current_time}.xlsx"')
+        os.startfile(f'"{program_directory}/excel files/{current_time}.xlsm"')
 
         shutil.rmtree(f"{program_directory}/images")
 
