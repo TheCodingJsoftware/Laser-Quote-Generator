@@ -194,12 +194,7 @@ def generate_excel_file(*args, file_name: str):
 
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=65)
-
-    excel_document.add_item(cell="G1", item="Quote Name:")
-    # excel_document.set_alignment(
-    #     cell="G1", horizontal="center", vertical="center", wrap_text=True
-    # )
-    # excel_document.bold(cell="G1", bold=True)
+    excel_document.add_item(cell="F1", item="Quote Name:")
 
     headers = [
         "Part name",
@@ -213,21 +208,20 @@ def generate_excel_file(*args, file_name: str):
         "Revenue",
     ]
 
-    # excel_document.add_list(cell="B1", items=headers)
-
     excel_document.set_cell_width(cell="A1", width=size_of_picture / 6)
-    excel_document.set_cell_width(cell="B1", width=22)
+    excel_document.set_cell_width(cell="B1", width=25)
     excel_document.set_col_hidden(cell="C1", hidden=True)
     excel_document.set_col_hidden(cell="D1", hidden=True)
     excel_document.set_col_hidden(cell="H1", hidden=True)
     excel_document.set_col_hidden(cell="I1", hidden=True)
-    excel_document.set_cell_width(cell="O1", width=15)
-    excel_document.set_cell_width(cell="G1", width=15)
+    excel_document.set_cell_width(cell="O1", width=17)
+    excel_document.set_cell_width(cell="F1", width=17)
+    excel_document.set_cell_width(cell="J1", width=17)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
     excel_document.add_item(cell="P2", item="Nitrogen")
     excel_document.add_dropdown_selection(
-        cell="P2", type="list", location="'Sheet2'!$A$3:$B$3"
+        cell="P2", type="list", location="'info'!$A$3:$B$3"
     )
     excel_document.add_list(cell="B3", items=args[0], horizontal=False)  # File name
     excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time
@@ -239,15 +233,15 @@ def generate_excel_file(*args, file_name: str):
         excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
         excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
         excel_document.add_dropdown_selection(
-            cell=f"F{row}", type="list", location="'Sheet2'!$A$1:$H$1"
+            cell=f"F{row}", type="list", location="'info'!$A$1:$H$1"
         )
         excel_document.add_dropdown_selection(
-            cell=f"G{row}", type="list", location="'Sheet2'!$A$2:$K$2"
+            cell=f"G{row}", type="list", location="'info'!$A$2:$K$2"
         )
 
         cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D{row}"
         cost_for_time = (
-            f"(INDEX('Sheet2'!$A$4:$B$4,MATCH($P$2,'Sheet2'!$A$3:$B$3,0))/60)*$C{row}"
+            f"(INDEX('info'!$A$4:$B$4,MATCH($P$2,'info'!$A$3:$B$3,0))/60)*$C{row}"
         )
         quantity = f"$E{row}"
         excel_document.add_item(
@@ -292,11 +286,11 @@ def generate_excel_file(*args, file_name: str):
 
     excel_document.add_item(cell=f"O{index + 4}", item="Overhead:")
     excel_document.add_item(cell=f"P{index + 4}", item=OVERHEAD, number_format="0%")
-    # excel_document.format_cell(cell=f"P{index + 4}", number_format="0%")
 
     excel_document.add_item(cell=f"O{index + 5}", item="Profit Margin:")
     excel_document.add_item(cell=f"P{index + 5}", item=PROFIT_MARGIN, number_format="0%")
-    # excel_document.format_cell(cell=f"P{index + 5}", number_format="0%")
+
+    excel_document.set_print_area(cell=f"A1:J{index + 5}")
 
     print("\t[ ] Injecting macro.bin")
     excel_document.add_macro(macro_path=f"{program_directory}/macro.bin")

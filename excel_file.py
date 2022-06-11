@@ -22,8 +22,11 @@ class ExcelFile:
                 "comments": "Created with Python, Magic and XlsxWriter",
             }
         )
-        self.worksheet = self.workbook.add_worksheet()
-        self.info_worksheet = self.workbook.add_worksheet()
+        self.worksheet = self.workbook.add_worksheet("Sheet")
+        self.info_worksheet = self.workbook.add_worksheet("info")
+        self.worksheet.hide_gridlines(2)
+        self.worksheet.set_margins(0.25, 0.25, 0.25, 0.25)
+        self.worksheet.freeze_panes("A3")
 
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
         self.file_name = file_name
@@ -232,6 +235,9 @@ class ExcelFile:
 
     def add_macro(self, macro_path) -> None:
         self.workbook.add_vba_project(macro_path)
+
+    def set_print_area(self, cell) -> None:
+        self.worksheet.print_area(cell)
 
     def save(self) -> None:
         """Save excel file."""
