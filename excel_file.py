@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import re
 
@@ -77,20 +78,27 @@ class ExcelFile:
                     self.add_item_to_sheet(f"{col}{row}", item)
                 row += 1
 
-    def add_item_to_sheet(self, cell: str, item) -> None:
+    def add_item_to_sheet(self, cell: str, item, number_format=None) -> None:
         """Add any item to any cell in the specified sheet
         Args:
             cell (str): Such as "A1"
             item (any): Any (item, str, int, float)
         """
         col, row = self.parse_cell(cell=cell)
+
+        cell_format = self.workbook.add_format()
+        self.info_worksheet.set_column("J:J", 12)
+        self.info_worksheet.set_column("L:L", 12)
+        with contextlib.suppress(Exception):
+            if "NOW" in item:
+                cell_format = self.workbook.add_format({"num_format": "hh:mm:ss AM/PM"})
         try:
             if item.is_integer():
-                self.info_worksheet.write(f"{col}{row}", int(item))
+                self.info_worksheet.write(f"{col}{row}", int(item), cell_format)
             elif not item.is_integer():
-                self.info_worksheet.write(f"{col}{row}", float(item))
+                self.info_worksheet.write(f"{col}{row}", float(item), cell_format)
         except AttributeError:
-            self.info_worksheet.write(f"{col}{row}", item)
+            self.info_worksheet.write(f"{col}{row}", item, cell_format)
 
     def add_list(self, cell: str, items: list, horizontal: bool = True) -> None:
         """Adds a list of items to the current workbook
@@ -199,17 +207,7 @@ class ExcelFile:
                 "total_row": True,
                 "style": theme,
                 "first_column": False,
-                "columns": [
-                    {"header": headers[0]},
-                    {"header": headers[1]},
-                    {"header": headers[2]},
-                    {"header": headers[3]},
-                    {"header": headers[4]},
-                    {"header": headers[5]},
-                    {"header": headers[6]},
-                    {"header": headers[7]},
-                    {"header": headers[8]},
-                ],
+                "columns": [{"header": header} for header in headers],
             },
         )
 

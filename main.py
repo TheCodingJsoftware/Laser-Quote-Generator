@@ -29,6 +29,11 @@ nitrogen_cost_per_hour: int = float(
 )
 co2_cost_per_hour: int = float(global_variables["GLOBAL VARIABLES"]["co2_cost_per_hour"])
 materials = global_variables["GLOBAL VARIABLES"]["materials"].split(",")
+"""
+SS      304 SS,409 SS   Nitrogen
+ST      Mild Steel      CO2
+AL      Aluminium       Nitrogen
+"""
 gauges = global_variables["GLOBAL VARIABLES"]["gauges"].split(",")
 path_to_sheet_prices = global_variables["GLOBAL VARIABLES"]["path_to_sheet_prices"]
 size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
@@ -44,6 +49,8 @@ quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
 sheet_quantity_regex = r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,})"
 piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
+material_id_regex = r"MATERIAL ID \(SHEET\): (\w{1,})"
+gauge_regex = r"MATERIAL ID \(SHEET\): \w{1,}-(\d{1,})"
 
 
 def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
@@ -120,6 +127,55 @@ def extract_images_from_pdf(pdf_paths: list, progress_bar) -> None:
         progress_bar()
 
 
+def convert_material_id_to_name(material: str) -> str:
+    """
+    It opens the file material_id.json, loads the data, and returns the name of the material
+
+    Args:
+      material (str): The material ID of the material you want to convert.
+
+    Returns:
+      The name of the material.
+    """
+    with open(f"{program_directory}/material_id.json", "r") as material_id_file:
+        data = json.load(material_id_file)
+    return data[material]["name"]
+
+
+def convert_material_id_to_number(number_id: str) -> str:
+    """
+    It takes a string as an argument, opens a json file, loads the data from the json file, and returns
+    a string
+
+    Args:
+      number_id (str): The material ID number.
+
+    Returns:
+      The thickness of the material.
+    """
+    with open(f"{program_directory}/material_id.json", "r") as material_id_file:
+        data = json.load(material_id_file)
+    return data["thickness"][number_id]
+
+
+def get_cutting_method(material: str) -> str:
+    """
+    "Given a material ID, return the cutting method."
+
+    The first line of the function is a docstring. It's a string that describes what the function does.
+    It's a good idea to include a docstring in every function you write
+
+    Args:
+      material_id (str): The material ID of the material you want to cut.
+
+    Returns:
+      The cutting method for the material.
+    """
+    with open(f"{program_directory}/material_id.json", "r") as material_id_file:
+        data = json.load(material_id_file)
+    return data[material]["cut"]
+
+
 def get_table_value_from_text(regex) -> list:
     """
     It takes a regular expression and returns a list of all the matches
@@ -164,27 +220,55 @@ def generate_excel_file(*args, file_name: str):
     )
     excel_document.add_list_to_sheet(
         cell="A5",
-        items=["Total parts: ", "", "", len(args[0])],
+        items=["Total parts: ", "", "", "=ROWS(Table1[Part name])"],
     )
     excel_document.add_list_to_sheet(
         cell="A6",
-        items=["Total machine time (min): ", "", "", sum(args[1]) * sum(args[3])],
+        items=[
+            "Total machine time (min): ",
+            "",
+            "",
+            "=SUMPRODUCT(Table1[Machining time (min)],Table1[Quantity])",
+            "Total machine time (hour):",
+            "",
+            "",
+            "=$D$6/60",
+            "As of: ",
+            "=NOW()",
+            "done at: ",
+            "=NOW()+($D$6/1440)",
+        ],
     )
     excel_document.add_list_to_sheet(
         cell="A7",
-        items=["Total weight (lb): ", "", "", sum(args[2]) * sum(args[3])],
+        items=[
+            "Total weight (lb): ",
+            "",
+            "",
+            "=SUMPRODUCT(Table1[Weight (lb)],Table1[Quantity])",
+        ],
     )
     excel_document.add_list_to_sheet(
         cell="A8",
-        items=["Total quantities: ", "", "", sum(args[3])],
+        items=["Total quantities: ", "", "", "=SUM(Table1[Quantity])"],
     )
     excel_document.add_list_to_sheet(
         cell="A9",
-        items=["Total surface area (in2): ", "", "", sum(args[6]) * sum(args[3])],
+        items=[
+            "Total surface area (in2): ",
+            "",
+            "",
+            "=SUMPRODUCT(Table1[Surface Area (in2)],Table1[Quantity])",
+        ],
     )
     excel_document.add_list_to_sheet(
         cell="A10",
-        items=["Total cutting length (in): ", "", "", sum(args[7]) * sum(args[3])],
+        items=[
+            "Total cutting length (in): ",
+            "",
+            "",
+            "=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Quantity])",
+        ],
     )
     excel_document.add_item_to_sheet(
         cell="A11",
@@ -202,24 +286,29 @@ def generate_excel_file(*args, file_name: str):
         "Weight (lb)",
         "Quantity",
         "Material",
-        "Gauge",
+        "Thickness",
         "COGS",
         "Overhead",
         "Revenue",
+        "Cutting Length (in)",
+        "Surface Area (in2)",
     ]
 
-    excel_document.set_cell_width(cell="A1", width=size_of_picture / 6)
+    excel_document.set_cell_width(cell="A1", width=15)
     excel_document.set_cell_width(cell="B1", width=25)
     excel_document.set_col_hidden(cell="C1", hidden=True)
     excel_document.set_col_hidden(cell="D1", hidden=True)
+    excel_document.set_cell_width(cell="G1", width=15)
     excel_document.set_col_hidden(cell="H1", hidden=True)
     excel_document.set_col_hidden(cell="I1", hidden=True)
+    excel_document.set_col_hidden(cell="K1", hidden=True)
+    excel_document.set_col_hidden(cell="L1", hidden=True)
     excel_document.set_cell_width(cell="O1", width=17)
     excel_document.set_cell_width(cell="F1", width=17)
     excel_document.set_cell_width(cell="J1", width=17)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
-    excel_document.add_item(cell="P2", item="Nitrogen")
+    excel_document.add_item(cell="P2", item=args[10])
     excel_document.add_dropdown_selection(
         cell="P2", type="list", location="'info'!$A$3:$B$3"
     )
@@ -227,11 +316,13 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time
     excel_document.add_list(cell="D3", items=args[2], horizontal=False)  # Weight
     excel_document.add_list(cell="E3", items=args[3], horizontal=False)  # Quantity
+    excel_document.add_list(cell="K3", items=args[6], horizontal=False)  # Cutting Length
+    excel_document.add_list(cell="L3", items=args[7], horizontal=False)  # Surface Area
+    excel_document.add_list(cell="F3", items=args[9], horizontal=False)  # Material Type
+    excel_document.add_list(cell="G3", items=args[8], horizontal=False)  # Gauge Selection
 
     for index in range(len(args[0])):
         row: int = index + 3
-        excel_document.add_item(cell=f"F{row}", item=materials[0])  # Material Type
-        excel_document.add_item(cell=f"G{row}", item=gauges[0])  # Gauge Selection
         excel_document.add_dropdown_selection(
             cell=f"F{row}", type="list", location="'info'!$A$1:$H$1"
         )
@@ -268,20 +359,45 @@ def generate_excel_file(*args, file_name: str):
             cell=f"A{row}",
             path_to_image=f"{program_directory}/images/{args[4][index]}.jpeg",
         )
-        excel_document.set_cell_height(cell=f"A{row}", height=size_of_picture / 1.2)
+        excel_document.set_cell_height(cell=f"A{row}", height=75)
 
     excel_document.add_table(
         display_name="Table1",
         theme="TableStyleLight8",
-        location=f"B2:J{index+3}",
+        location=f"B2:L{index+3}",
         headers=headers,
     )
-
+    excel_document.add_item(
+        cell=f"C{index+4}",
+        item="=SUMPRODUCT(Table1[Machining time (min)],Table1[Quantity])",
+    )
+    excel_document.add_item(
+        cell=f"D{index+4}",
+        item="=SUMPRODUCT(Table1[Weight (lb)],Table1[Quantity])",
+    )
     excel_document.add_item(cell=f"G{index+4}", item="Total: ")
+    excel_document.add_item(
+        cell=f"H{index+4}",
+        item="=SUM(Table1[COGS])",
+        number_format="$#,##0.00",
+    )
+    excel_document.add_item(
+        cell=f"I{index+4}",
+        item="=SUM(Table1[Overhead])",
+        number_format="$#,##0.00",
+    )
     excel_document.add_item(
         cell=f"J{index+4}",
         item="=SUM(Table1[Revenue])",
         number_format="$#,##0.00",
+    )
+    excel_document.add_item(
+        cell=f"K{index+4}",
+        item="=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Quantity])",
+    )
+    excel_document.add_item(
+        cell=f"L{index+4}",
+        item="=SUMPRODUCT(Table1[Surface Area (in2)],Table1[Quantity])",
     )
 
     excel_document.add_item(cell=f"O{index + 4}", item="Overhead:")
@@ -342,6 +458,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         surface_areas_numbers = []
         cutting_lengths_numbers = []
         piercing_time_numbers = []
+        material_for_parts = []
+        gauge_for_parts = []
 
         progress_bar.text = "-> Getting images, please wait..."
         extract_images_from_pdf(file_names, progress_bar)
@@ -358,8 +476,17 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             quantity_multiplier = int(
                 quantity_multiplier.replace("PROGRAMME RUNS:  /  SCRAP: ", "")
             )
-
+            material_for_part = convert_material_id_to_name(
+                material=get_table_value_from_text(regex=material_id_regex)[0]
+            )
+            gauge_for_part = convert_material_id_to_number(
+                number_id=get_table_value_from_text(regex=gauge_regex)[0],
+            )
+            cutting_with = get_cutting_method(
+                material=get_table_value_from_text(regex=material_id_regex)[0]
+            )
             part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
+
             for part_name in part_file_paths:
                 part_name = (
                     part_name.split("\\")[-1]
@@ -377,6 +504,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
                     "cutting_length": 0,
                     "file_name": file_name,
                     "piercing_time": 0.0,
+                    "gauge": gauge_for_part,
+                    "material": material_for_part,
                 }
 
                 part_names.append(part_name)
@@ -447,6 +576,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             quantity_numbers.append(part_dictionary[part]["quantity"])
             weights_numbers.append(part_dictionary[part]["weight"])
             image_index.append(part_dictionary[part]["image_index"])
+            material_for_parts.append(part_dictionary[part]["material"])
+            gauge_for_parts.append(part_dictionary[part]["gauge"])
 
         progress_bar.text = "-> Generating excel sheet, please wait..."
         progress_bar()
@@ -460,6 +591,9 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             file_names,
             surface_areas_numbers,
             cutting_lengths_numbers,
+            gauge_for_parts,
+            material_for_parts,
+            cutting_with,
             file_name=current_time,
         )
 
