@@ -1,5 +1,4 @@
 import configparser
-import contextlib
 import io
 import json
 import os
@@ -9,8 +8,7 @@ import sys
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from time import sleep
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
 import fitz  # PyMuPDF
 from alive_progress import alive_bar
@@ -228,7 +226,7 @@ def generate_excel_file(*args, file_name: str):
             "Total machine time (min): ",
             "",
             "",
-            "=SUMPRODUCT(Table1[Machining time (min)],Table1[Quantity])",
+            "=SUMPRODUCT(Table1[Machining time (min)],Table1[Qty])",
             "Total machine time (hour):",
             "",
             "",
@@ -245,12 +243,12 @@ def generate_excel_file(*args, file_name: str):
             "Total weight (lb): ",
             "",
             "",
-            "=SUMPRODUCT(Table1[Weight (lb)],Table1[Quantity])",
+            "=SUMPRODUCT(Table1[Weight (lb)],Table1[Qty])",
         ],
     )
     excel_document.add_list_to_sheet(
         cell="A8",
-        items=["Total quantities: ", "", "", "=SUM(Table1[Quantity])"],
+        items=["Total quantities: ", "", "", "=SUM(Table1[Qty])"],
     )
     excel_document.add_list_to_sheet(
         cell="A9",
@@ -258,7 +256,7 @@ def generate_excel_file(*args, file_name: str):
             "Total surface area (in2): ",
             "",
             "",
-            "=SUMPRODUCT(Table1[Surface Area (in2)],Table1[Quantity])",
+            "=SUMPRODUCT(Table1[Surface Area (in2)],Table1[Qty])",
         ],
     )
     excel_document.add_list_to_sheet(
@@ -267,7 +265,7 @@ def generate_excel_file(*args, file_name: str):
             "Total cutting length (in): ",
             "",
             "",
-            "=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Quantity])",
+            "=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Qty])",
         ],
     )
     excel_document.add_item_to_sheet(
@@ -278,82 +276,95 @@ def generate_excel_file(*args, file_name: str):
 
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=65)
-    excel_document.add_item(cell="F1", item="Quote Name:")
+    excel_document.add_item(cell="F1", item="Prepared for:")
 
     headers = [
         "Part name",
         "Machining time (min)",
         "Weight (lb)",
-        "Quantity",
         "Material",
         "Thickness",
+        "Qty",
         "COGS",
         "Overhead",
-        "Revenue",
+        "Unit Price",
+        "Price",
         "Cutting Length (in)",
         "Surface Area (in2)",
     ]
 
     excel_document.set_cell_width(cell="A1", width=15)
     excel_document.set_cell_width(cell="B1", width=25)
-    excel_document.set_col_hidden(cell="C1", hidden=True)
-    excel_document.set_col_hidden(cell="D1", hidden=True)
-    excel_document.set_cell_width(cell="G1", width=15)
-    excel_document.set_col_hidden(cell="H1", hidden=True)
-    excel_document.set_col_hidden(cell="I1", hidden=True)
-    excel_document.set_col_hidden(cell="K1", hidden=True)
-    excel_document.set_col_hidden(cell="L1", hidden=True)
+    excel_document.set_cell_width(cell="G1", width=6)
     excel_document.set_cell_width(cell="O1", width=17)
     excel_document.set_cell_width(cell="F1", width=17)
-    excel_document.set_cell_width(cell="J1", width=17)
+    excel_document.set_cell_width(cell="K1", width=10)
+    excel_document.set_cell_width(cell="J1", width=10)
+    excel_document.set_col_hidden(cell="C1", hidden=True)
+    excel_document.set_col_hidden(cell="D1", hidden=True)
+    excel_document.set_col_hidden(cell="H1", hidden=True)
+    excel_document.set_col_hidden(cell="I1", hidden=True)
+    excel_document.set_col_hidden(cell="L1", hidden=True)
+    excel_document.set_col_hidden(cell="M1", hidden=True)
 
     excel_document.add_item(cell="O2", item="Laser cutting:")
     excel_document.add_item(cell="P2", item=args[10])
     excel_document.add_dropdown_selection(
         cell="P2", type="list", location="'info'!$A$3:$B$3"
     )
-    excel_document.add_list(cell="B3", items=args[0], horizontal=False)  # File name
-    excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time
-    excel_document.add_list(cell="D3", items=args[2], horizontal=False)  # Weight
-    excel_document.add_list(cell="E3", items=args[3], horizontal=False)  # Quantity
-    excel_document.add_list(cell="K3", items=args[6], horizontal=False)  # Cutting Length
-    excel_document.add_list(cell="L3", items=args[7], horizontal=False)  # Surface Area
-    excel_document.add_list(cell="F3", items=args[9], horizontal=False)  # Material Type
-    excel_document.add_list(cell="G3", items=args[8], horizontal=False)  # Gauge Selection
+    excel_document.add_list(cell="B3", items=args[0], horizontal=False)  # File name B
+    excel_document.add_list(cell="C3", items=args[1], horizontal=False)  # Machine Time C
+    excel_document.add_list(cell="D3", items=args[2], horizontal=False)  # Weight D
+    excel_document.add_list(cell="E3", items=args[9], horizontal=False)  # Material Type E
+    excel_document.add_list(
+        cell="F3", items=args[8], horizontal=False
+    )  # Gauge Selection F
+    excel_document.add_list(cell="G3", items=args[3], horizontal=False)  # Quantity G
+    excel_document.add_list(
+        cell="L3", items=args[6], horizontal=False
+    )  # Cutting Length L
+    excel_document.add_list(cell="M3", items=args[7], horizontal=False)  # Surface Area M
 
     for index in range(len(args[0])):
         row: int = index + 3
         excel_document.add_dropdown_selection(
-            cell=f"F{row}", type="list", location="'info'!$A$1:$H$1"
+            cell=f"E{row}", type="list", location="'info'!$A$1:$H$1"
         )
         excel_document.add_dropdown_selection(
-            cell=f"G{row}", type="list", location="'info'!$A$2:$K$2"
+            cell=f"F{row}", type="list", location="'info'!$A$2:$K$2"
         )
 
-        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($F{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D{row}"
+        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($E{row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D{row}"
         cost_for_time = (
             f"(INDEX('info'!$A$4:$B$4,MATCH($P$2,'info'!$A$3:$B$3,0))/60)*$C{row}"
         )
-        quantity = f"$E{row}"
+        quantity = f"$G{row}"
         excel_document.add_item(
             cell=f"H{row}",
             item=f"=({cost_for_weight}+{cost_for_time})*{quantity}",
             number_format="$#,##0.00",
         )  # Cost
 
-        overhead = f"$J{row}*($P${len(args[0])+3})"
+        overhead = f"$K{row}*($P${len(args[0])+3})"
         excel_document.add_item(
             cell=f"I{row}",
             item=f"={overhead}",
             number_format="$#,##0.00",
         )  # Overhead
 
-        revenue = f"($H{row}+$I{row})/(1-$P${len(args[0])+4})"
+        unit_price = f"$K${row}/$G${row}"
         excel_document.add_item(
             cell=f"J{row}",
-            item=f"={revenue}",
+            item=f"={unit_price}",
             number_format="$#,##0.00",
-        )  # Revenue
+        )  # Unit Price
+
+        price = f"($H{row}+$I{row})/(1-$P${len(args[0])+4})"
+        excel_document.add_item(
+            cell=f"K{row}",
+            item=f"={price}",
+            number_format="$#,##0.00",
+        )  # Price
 
         excel_document.add_image(
             cell=f"A{row}",
@@ -364,18 +375,18 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_table(
         display_name="Table1",
         theme="TableStyleLight8",
-        location=f"B2:L{index+3}",
+        location=f"B2:M{index+3}",
         headers=headers,
     )
     excel_document.add_item(
         cell=f"C{index+4}",
-        item="=SUMPRODUCT(Table1[Machining time (min)],Table1[Quantity])",
+        item="=SUMPRODUCT(Table1[Machining time (min)],Table1[Qty])",
     )
     excel_document.add_item(
         cell=f"D{index+4}",
-        item="=SUMPRODUCT(Table1[Weight (lb)],Table1[Quantity])",
+        item="=SUMPRODUCT(Table1[Weight (lb)],Table1[Qty])",
     )
-    excel_document.add_item(cell=f"G{index+4}", item="Total: ")
+    excel_document.add_item(cell=f"J{index+4}", item="Total: ")
     excel_document.add_item(
         cell=f"H{index+4}",
         item="=SUM(Table1[COGS])",
@@ -387,17 +398,17 @@ def generate_excel_file(*args, file_name: str):
         number_format="$#,##0.00",
     )
     excel_document.add_item(
-        cell=f"J{index+4}",
-        item="=SUM(Table1[Revenue])",
+        cell=f"K{index+4}",
+        item="=SUM(Table1[Price])",
         number_format="$#,##0.00",
     )
     excel_document.add_item(
-        cell=f"K{index+4}",
-        item="=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Quantity])",
+        cell=f"L{index+4}",
+        item="=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Qty])",
     )
     excel_document.add_item(
-        cell=f"L{index+4}",
-        item="=SUMPRODUCT(Table1[Surface Area (in2)],Table1[Quantity])",
+        cell=f"M{index+4}",
+        item="=SUMPRODUCT(Table1[Surface Area (in2)],Table1[Qty])",
     )
 
     excel_document.add_item(cell=f"O{index + 4}", item="Overhead:")
@@ -406,7 +417,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell=f"O{index + 5}", item="Profit Margin:")
     excel_document.add_item(cell=f"P{index + 5}", item=PROFIT_MARGIN, number_format="0%")
 
-    excel_document.set_print_area(cell=f"A1:J{index + 5}")
+    excel_document.set_print_area(cell=f"A1:K{index + 5}")
 
     print("\t[ ] Injecting macro.bin")
     excel_document.add_macro(macro_path=f"{program_directory}/macro.bin")
@@ -438,7 +449,6 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
       file_names (list): list
     """
     Path(f"{program_directory}/images").mkdir(parents=True, exist_ok=True)
-    Path(f"{program_directory}/excel files").mkdir(parents=True, exist_ok=True)
     today = datetime.now()
     current_time = today.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -615,8 +625,33 @@ directory_of_file: str = os.getcwd()
 root = tk.Tk()
 root.withdraw()
 
-filetypes = (("pdf files", "*.pdf"),)
 
+Path(f"{program_directory}/excel files").mkdir(parents=True, exist_ok=True)
+
+size = (
+    sum(
+        d.stat().st_size
+        for d in os.scandir(f"{program_directory}/excel files")
+        if d.is_file()
+    )
+    / 1049000
+)
+
+if size > 5:  # mb
+    response = messagebox.askquestion(
+        "Answer the question",
+        "You have accumulated over 5mb\nworth of excel documents, would \nyou like to delete them?",
+    )
+    if response == "yes":
+        try:
+            shutil.rmtree(f"{program_directory}/excel files")
+        except OSError as e:
+            messagebox.showerror(
+                "Error",
+                f"{e.filename} - {e.strerror}.\n\nTry running in administrator mode\nnext time or closing opened\nexcel files.",
+            )
+
+filetypes = (("pdf files", "*.pdf"),)
 file_paths = filedialog.askopenfilenames(
     parent=root, title="Select files", initialdir=directory_of_file, filetypes=filetypes
 )

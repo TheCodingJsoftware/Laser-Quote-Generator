@@ -137,12 +137,20 @@ class ExcelFile:
         cell_format.set_align("center")
         cell_format.set_align("vcenter")
         cell_format.set_text_wrap()
+        if (
+            "Total" in str(item)
+            or "Prepared for:" in str(item)
+            or "=SUM(Table1[Price])" in str(item)
+        ):
+            cell_format.set_bold()
+        if col == "K" and not "=SUM(Table1[Price])" in str(item):
+            cell_format.set_right(1)
         try:
             if item.is_integer():
                 self.worksheet.write(f"{col}{row}", int(item), cell_format)
             elif not item.is_integer():
                 self.worksheet.write(f"{col}{row}", float(item), cell_format)
-        except AttributeError:
+        except (TypeError, AttributeError):
             self.worksheet.write(f"{col}{row}", item, cell_format)
 
     def set_cell_width(self, cell: str, width: int) -> None:
