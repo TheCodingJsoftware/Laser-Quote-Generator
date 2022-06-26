@@ -100,6 +100,16 @@ class ExcelFile:
         except AttributeError:
             self.info_worksheet.write(f"{col}{row}", item, cell_format)
 
+    def set_row_hidden_sheet(self, cell: str, hidden: bool = True) -> None:
+        """Hide row
+
+        Args:
+            cell (str): Such as "A1"
+            visible (bool): True or False
+        """
+        _, row = self.parse_cell(cell=cell)
+        self.info_worksheet.set_row(row - 1, None, None, {"hidden": 1})
+
     def add_list(self, cell: str, items: list, horizontal: bool = True) -> None:
         """Adds a list of items to the current workbook
 
@@ -121,7 +131,7 @@ class ExcelFile:
                 self.add_item(f"{col}{row}", item)
                 row += 1
 
-    def add_item(self, cell: str, item, number_format=None) -> None:
+    def add_item(self, cell: str, item, number_format=None, totals: bool = False) -> None:
         """Add any item to any cell in the excel work book
 
         Args:
@@ -140,11 +150,17 @@ class ExcelFile:
         if (
             "Total" in str(item)
             or "Prepared for:" in str(item)
+            or "Quote name:" in str(item)
             or "=SUM(Table1[Price])" in str(item)
         ):
             cell_format.set_bold()
-        if col == "K" and not "=SUM(Table1[Price])" in str(item):
+        if col == "K" and row > 2:
             cell_format.set_right(1)
+        if totals:
+            cell_format.set_top(6)
+            cell_format.set_bottom(1)
+            if col == "A":
+                cell_format.set_left(1)
         try:
             if item.is_integer():
                 self.worksheet.write(f"{col}{row}", int(item), cell_format)
@@ -154,6 +170,7 @@ class ExcelFile:
             self.worksheet.write(f"{col}{row}", item, cell_format)
 
     def set_cell_width(self, cell: str, width: int) -> None:
+        # sourcery skip: remove-unnecessary-cast
         """Change teh width of any cell, only the column is, the row is not used.
 
         Args:
@@ -183,7 +200,9 @@ class ExcelFile:
         """
         col, row = self.parse_cell(cell=cell)
         self.worksheet.insert_image(
-            f"{col}{row}", path_to_image, {"x_scale": 1, "y_scale": 1}
+            f"{col}{row}",
+            path_to_image,
+            {"x_offset": 1, "y_offset": 1, "x_scale": 1, "y_scale": 1},
         )
 
     def add_dropdown_selection(self, cell: str, type: str, location: str) -> None:
