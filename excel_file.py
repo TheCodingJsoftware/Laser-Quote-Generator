@@ -150,7 +150,7 @@ class ExcelFile:
         if (
             "Total" in str(item)
             or "Prepared for:" in str(item)
-            or "Quote name:" in str(item)
+            or "Quote #:" in str(item)
             or "=SUM(Table1[Price])" in str(item)
         ):
             cell_format.set_bold()

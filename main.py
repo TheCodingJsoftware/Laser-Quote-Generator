@@ -38,14 +38,16 @@ size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
 PROFIT_MARGIN: float = float(global_variables["GLOBAL VARIABLES"]["profit_margin"])
 OVERHEAD: float = float(global_variables["GLOBAL VARIABLES"]["overhead"])
 
-geofile_name_regex = r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
+geofile_name_regex = (
+    r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.geo|GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
+)
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
 weight_regex = r"(WEIGHT: \d{1,}.\d{1,} lb)"
 surface_area_regex = r"(SURFACE: \d{1,}.\d{1,}  in2)"
 cutting_length_regex = r"(CUTTING LENGTH: \d{1,}.\d{1,}  in)"
 quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
-sheet_quantity_regex = r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,})"
+sheet_quantity_regex = r"(PROGRAM RUNS:  \/  SCRAP: \d{1,})"
 piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
 material_id_regex = r"MATERIAL ID \(SHEET\): (\w{1,})"
 gauge_regex = r"MATERIAL ID \(SHEET\): \w{1,}-(\d{1,})"
@@ -291,7 +293,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=33)
     excel_document.set_cell_height(cell="A2", height=33)
-    excel_document.add_item(cell="E1", item="Quote name:")
+    excel_document.add_item(cell="E1", item="Quote #:")
     excel_document.add_item(cell="E2", item="Prepared for:")
     excel_document.add_list(cell="F1", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_list(cell="F2", items=["", "", "", "", "", "", "", "", ""])
@@ -311,6 +313,7 @@ def generate_excel_file(*args, file_name: str):
         "Cutting Length (in)",
         "Surface Area (in2)",
         "Piercing Time (sec)",
+        "Total Cost",
     ]
 
     excel_document.set_cell_width(cell="A1", width=15)
@@ -318,10 +321,11 @@ def generate_excel_file(*args, file_name: str):
     excel_document.set_cell_width(cell="E1", width=12)
     excel_document.set_cell_width(cell="G1", width=11)
     excel_document.set_cell_width(cell="O1", width=17)
-    excel_document.set_cell_width(cell="R1", width=17)
+    excel_document.set_cell_width(cell="S1", width=17)
     excel_document.set_cell_width(cell="F1", width=12)
     excel_document.set_cell_width(cell="J1", width=12)
     excel_document.set_cell_width(cell="K1", width=12)
+    excel_document.set_cell_width(cell="P1", width=12)
 
     excel_document.set_col_hidden(cell="C1", hidden=True)
     excel_document.set_col_hidden(cell="D1", hidden=True)
@@ -330,11 +334,12 @@ def generate_excel_file(*args, file_name: str):
     excel_document.set_col_hidden(cell="L1", hidden=True)
     excel_document.set_col_hidden(cell="M1", hidden=True)
     excel_document.set_col_hidden(cell="N1", hidden=True)
+    excel_document.set_col_hidden(cell="O1", hidden=True)
 
-    excel_document.add_item(cell="O2", item="Laser cutting:")
-    excel_document.add_item(cell="P2", item=args[10])
+    excel_document.add_item(cell="P2", item="Laser cutting:")
+    excel_document.add_item(cell="Q2", item=args[10])
     excel_document.add_dropdown_selection(
-        cell="P2", type="list", location="'info'!$A$3:$B$3"
+        cell="Q2", type="list", location="'info'!$A$3:$B$3"
     )
     STARTING_ROW: int = 4
     excel_document.add_list(
@@ -376,46 +381,54 @@ def generate_excel_file(*args, file_name: str):
 
         cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($E${row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D${row}"
         cost_for_time = (
-            f"(INDEX('info'!$A$4:$B$4,MATCH($P$2,'info'!$A$3:$B$3,0))/60)*$C${row}"
+            f"(INDEX('info'!$A$4:$B$4,MATCH($Q$2,'info'!$A$3:$B$3,0))/60)*$C${row}"
         )
         quantity = f"$G{row}"
         excel_document.add_item(
             cell=f"H{row}",
-            item=f"=({cost_for_weight}+{cost_for_time})*{quantity}",
+            item=f"=({cost_for_weight}+{cost_for_time})",
             number_format="$#,##0.00",
         )  # Cost
 
-        overhead = f"$K${row}*($S$1)"
+        overhead = f"$J{row}*($T$1)"
         excel_document.add_item(
             cell=f"I{row}",
             item=f"={overhead}",
             number_format="$#,##0.00",
         )  # Overhead
 
-        unit_price = f"$K${row}/$G${row}"
+        unit_price = f"$K{row}/$G{row}"
         excel_document.add_item(
             cell=f"J{row}",
             item=f"={unit_price}",
             number_format="$#,##0.00",
         )  # Unit Price
 
-        price = f"($H${row}+$I${row})/(1-$S$2)"
+        price = f"(($O{row})/(1-$T$2))*$G{row}"
         excel_document.add_item(
             cell=f"K{row}",
             item=f"={price}",
             number_format="$#,##0.00",
         )  # Price
 
+        total_cost = f"$H{row}+$I{row}"
+        excel_document.add_item(
+            cell=f"O{row}",
+            item=f"={total_cost}",
+            number_format="$#,##0.00",
+        )  # Total Cost
+
         excel_document.add_image(
             cell=f"A{row}",
             path_to_image=f"{program_directory}/images/{args[4][index]}.jpeg",
         )
+
         excel_document.set_cell_height(cell=f"A{row}", height=77)
 
     excel_document.add_table(
         display_name="Table1",
         theme="TableStyleLight8",
-        location=f"A{STARTING_ROW-1}:N{index+STARTING_ROW}",
+        location=f"A{STARTING_ROW-1}:O{index+STARTING_ROW}",
         headers=headers,
     )
     excel_document.add_item(cell=f"A{index+STARTING_ROW+1}", item="", totals=True)
@@ -467,12 +480,17 @@ def generate_excel_file(*args, file_name: str):
         item="=SUMPRODUCT(Table1[Piercing Time (sec)],Table1[Qty])",
         totals=True,
     )
+    excel_document.add_item(
+        cell=f"O{index+STARTING_ROW+1}",
+        item="=SUM(Table1[Total Cost])",
+        totals=True,
+    )
 
-    excel_document.add_item(cell="R1", item="Overhead:")
-    excel_document.add_item(cell="S1", item=OVERHEAD, number_format="0%")
+    excel_document.add_item(cell="S1", item="Overhead:")
+    excel_document.add_item(cell="T1", item=OVERHEAD, number_format="0%")
 
-    excel_document.add_item(cell="R2", item="Profit Margin:")
-    excel_document.add_item(cell="S2", item=PROFIT_MARGIN, number_format="0%")
+    excel_document.add_item(cell="S2", item="Profit Margin:")
+    excel_document.add_item(cell="T2", item=PROFIT_MARGIN, number_format="0%")
 
     excel_document.set_print_area(cell=f"A1:K{index + STARTING_ROW+1}")
 
@@ -541,7 +559,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
 
             quantity_multiplier = get_table_value_from_text(regex=sheet_quantity_regex)[0]
             quantity_multiplier = int(
-                quantity_multiplier.replace("PROGRAMME RUNS:  /  SCRAP: ", "")
+                quantity_multiplier.replace("PROGRAM RUNS:  /  SCRAP: ", "")
             )
             material_for_part = convert_material_id_to_name(
                 material=get_table_value_from_text(regex=material_id_regex)[0]
