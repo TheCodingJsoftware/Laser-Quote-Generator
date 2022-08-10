@@ -292,14 +292,14 @@ def generate_excel_file(*args, file_name: str):
 
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=33)
-    excel_document.set_cell_height(cell="A2", height=33)
+    excel_document.set_cell_height(cell="A2", height=34)
     excel_document.add_item(cell="E1", item="Quote #:")
     excel_document.add_item(cell="E2", item="Prepared for:")
     excel_document.add_list(cell="F1", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_list(cell="F2", items=["", "", "", "", "", "", "", "", ""])
 
     headers = [
-        "Thumbnail",
+        "Item",
         "Part name",
         "Machining time (min)",
         "Weight (lb)",
@@ -423,7 +423,7 @@ def generate_excel_file(*args, file_name: str):
             path_to_image=f"{program_directory}/images/{args[4][index]}.jpeg",
         )
 
-        excel_document.set_cell_height(cell=f"A{row}", height=77)
+        excel_document.set_cell_height(cell=f"A{row}", height=78)
 
     excel_document.add_table(
         display_name="Table1",

@@ -1,6 +1,6 @@
 import contextlib
-import datetime
 import re
+from datetime import datetime
 
 import xlsxwriter
 from openpyxl.utils.cell import column_index_from_string, get_column_letter
@@ -202,7 +202,7 @@ class ExcelFile:
         self.worksheet.insert_image(
             f"{col}{row}",
             path_to_image,
-            {"x_offset": 1, "y_offset": 1, "x_scale": 1, "y_scale": 1},
+            {"x_offset": 2, "y_offset": 2, "x_scale": 1, "y_scale": 1},
         )
 
     def add_dropdown_selection(self, cell: str, type: str, location: str) -> None:
@@ -266,4 +266,14 @@ class ExcelFile:
 
     def save(self) -> None:
         """Save excel file."""
+        merge_format = self.workbook.add_format(
+            {
+                "align": "top",
+                "valign": "right",
+            }
+        )
+        merge_format.set_text_wrap()
+        self.worksheet.merge_range(
+            "J1:K1", f"{datetime.now().strftime('%B %d, %A, %Y')}", merge_format
+        )
         self.workbook.close()
