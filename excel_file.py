@@ -27,7 +27,13 @@ class ExcelFile:
         self.info_worksheet = self.workbook.add_worksheet("info")
         self.worksheet.hide_gridlines(2)
         self.worksheet.set_margins(0.25, 0.25, 0.25, 0.25)
-        self.worksheet.freeze_panes("A3")
+        self.worksheet.freeze_panes("A4")
+        footer = (
+            "&LDate Expected\n\n______________________"
+            + "&CReceived in good order by:\n\n______________________________________________________"
+            + "&RPage &P"
+        )
+        self.worksheet.set_footer(footer)
 
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
         self.file_name = file_name
@@ -149,12 +155,15 @@ class ExcelFile:
         cell_format.set_text_wrap()
         if (
             "Total" in str(item)
-            or "Prepared for:" in str(item)
-            or "Quote #:" in str(item)
+            or "Packing Slip" in str(item)
+            or "Order #" in str(item)
+            or "Ship To:" in str(item)
+            or "Date Shipped:" in str(item)
+            or "No Tax Included" in str(item)
             or "=SUM(Table1[Price])" in str(item)
         ):
             cell_format.set_bold()
-        if col == "K" and row > 2:
+        if col == "K" and row > 2 and "Tax" not in str(item):
             cell_format.set_right(1)
         if totals:
             cell_format.set_top(6)
@@ -276,4 +285,9 @@ class ExcelFile:
         self.worksheet.merge_range(
             "J1:K1", f"{datetime.now().strftime('%B %d, %A, %Y')}", merge_format
         )
+        merge_format = self.workbook.add_format({"align": "center", "valign": "center"})
+        merge_format.set_bold()
+        merge_format.set_font_size(18)
+        merge_format.set_bottom(1)
+        self.worksheet.merge_range("E1:G1", "Packing Slip", merge_format)
         self.workbook.close()

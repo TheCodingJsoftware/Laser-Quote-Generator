@@ -293,10 +293,13 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=33)
     excel_document.set_cell_height(cell="A2", height=34)
-    excel_document.add_item(cell="E1", item="Quote #:")
-    excel_document.add_item(cell="E2", item="Prepared for:")
+    excel_document.set_cell_height(cell="A3", height=34)
+    excel_document.add_item(cell="E1", item="Packing Slip")
+    excel_document.add_item(cell="E2", item="Order #")
     excel_document.add_list(cell="F1", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_list(cell="F2", items=["", "", "", "", "", "", "", "", ""])
+    excel_document.add_item(cell="A3", item="Date Shipped:")
+    excel_document.add_item(cell="E3", item="Ship To:")
 
     headers = [
         "Item",
@@ -341,7 +344,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_dropdown_selection(
         cell="Q2", type="list", location="'info'!$A$3:$B$3"
     )
-    STARTING_ROW: int = 4
+    STARTING_ROW: int = 5
     excel_document.add_list(
         cell=f"B{STARTING_ROW}", items=args[0], horizontal=False
     )  # File name B
@@ -465,6 +468,7 @@ def generate_excel_file(*args, file_name: str):
         number_format="$#,##0.00",
         totals=True,
     )
+    excel_document.add_item(cell=f"K{index+STARTING_ROW+2}", item="No Tax Included")
     excel_document.add_item(
         cell=f"L{index+STARTING_ROW+1}",
         item="=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Qty])",
@@ -492,7 +496,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell="S2", item="Profit Margin:")
     excel_document.add_item(cell="T2", item=PROFIT_MARGIN, number_format="0%")
 
-    excel_document.set_print_area(cell=f"A1:K{index + STARTING_ROW+1}")
+    excel_document.set_print_area(cell=f"A1:K{index + STARTING_ROW+2}")
 
     print("\t[ ] Injecting macro.bin")
     excel_document.add_macro(macro_path=f"{program_directory}/macro.bin")
