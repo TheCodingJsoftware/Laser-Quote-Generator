@@ -38,9 +38,7 @@ size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
 PROFIT_MARGIN: float = float(global_variables["GLOBAL VARIABLES"]["profit_margin"])
 OVERHEAD: float = float(global_variables["GLOBAL VARIABLES"]["overhead"])
 
-geofile_name_regex = (
-    r"(GEOFILE NAME: C:\\[\w\W]{1,300}\.geo|GEOFILE NAME: C:\\[\w\W]{1,300}\.GEO)"
-)
+geofile_name_regex = r"(GEOFILE NAME: [a-zA-z]:\\[\w\W]{1,300}\.geo|GEOFILE NAME: [a-zA-Z]:\\[\w\W]{1,300}\.GEO)"
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
 weight_regex = r"(WEIGHT: \d{1,}.\d{1,} lb)"
 surface_area_regex = r"(SURFACE: \d{1,}.\d{1,}  in2)"
@@ -49,8 +47,8 @@ quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
 sheet_quantity_regex = r"(PROGRAM RUNS:  \/  SCRAP: \d{1,})"
 piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
-material_id_regex = r"MATERIAL ID \(SHEET\): (\w{1,})"
-gauge_regex = r"MATERIAL ID \(SHEET\): \w{1,}-(\d{1,})"
+material_id_regex = r"MATERIAL ID \(SHEET\): .{1,} (?=.*(ST|SS|AL)-)"
+gauge_regex = r"MATERIAL ID \(SHEET\): .{1,} ?-(\d{1,})"
 
 
 def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
@@ -400,21 +398,21 @@ def generate_excel_file(*args, file_name: str):
             number_format="$#,##0.00",
         )  # Overhead
 
-        unit_price = f"$K{row}/$G{row}"
+        unit_price = f"CEILING(($O{row})/(1-$T$2),0.01)"
         excel_document.add_item(
             cell=f"J{row}",
             item=f"={unit_price}",
             number_format="$#,##0.00",
         )  # Unit Price
 
-        price = f"(($O{row})/(1-$T$2))*$G{row}"
+        price = f"CEILING({quantity}*J{row},0.01)"
         excel_document.add_item(
             cell=f"K{row}",
             item=f"={price}",
             number_format="$#,##0.00",
         )  # Price
 
-        total_cost = f"$H{row}+$I{row}"
+        total_cost = f"CEILING($H{row}+$I{row},0.01)"
         excel_document.add_item(
             cell=f"O{row}",
             item=f"={total_cost}",
