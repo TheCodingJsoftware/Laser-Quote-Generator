@@ -38,7 +38,7 @@ class ExcelFile:
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
         self.file_name = file_name
 
-    def parse_cell(self, cell: str) -> (str, int):
+    def parse_cell(self, cell: str):
         """Parses excel cell input such as "AD300"
 
         Args:
@@ -150,9 +150,10 @@ class ExcelFile:
             cell_format = self.workbook.add_format()
         else:
             cell_format = self.workbook.add_format({"num_format": number_format})
-        cell_format.set_align("center")
-        cell_format.set_align("vcenter")
-        cell_format.set_text_wrap()
+        if 'Payment' not in str(item):
+            cell_format.set_align("center")
+            cell_format.set_align("vcenter")
+            cell_format.set_text_wrap()
         if (
             "Total" in str(item)
             or "Packing Slip" in str(item)

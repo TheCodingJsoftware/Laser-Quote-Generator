@@ -211,7 +211,7 @@ def generate_excel_file(*args, file_name: str):
     # excel_document.create_sheet(sheet_name="info")
     excel_document.add_list_to_sheet(cell="A1", items=materials)
     excel_document.add_list_to_sheet(cell="A2", items=gauges)
-    excel_document.add_list_to_sheet(cell="A3", items=["Nitrogen", "CO2"])
+    excel_document.add_list_to_sheet(cell="A3", items=["Nitrogen", "CO2", "Packing Slip", "Quote"])
     excel_document.add_list_to_sheet(
         cell="A4",
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
@@ -296,6 +296,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell="E2", item="Order #")
     excel_document.add_list(cell="F1", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_list(cell="F2", items=["", "", "", "", "", "", "", "", ""])
+    excel_document.add_list(cell="F3", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_item(cell="A3", item="Date Shipped:")
     excel_document.add_item(cell="E3", item="Ship To:")
 
@@ -341,6 +342,9 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell="Q2", item=args[10])
     excel_document.add_dropdown_selection(
         cell="Q2", type="list", location="'info'!$A$3:$B$3"
+    )
+    excel_document.add_dropdown_selection(
+        cell="E1", type="list", location="'info'!$C$3:$D$3"
     )
     STARTING_ROW: int = 5
     excel_document.add_list(
@@ -467,6 +471,7 @@ def generate_excel_file(*args, file_name: str):
         totals=True,
     )
     excel_document.add_item(cell=f"K{index+STARTING_ROW+2}", item="No Tax Included")
+    excel_document.add_item(cell=f"B{index+STARTING_ROW+2}", item="Payment past due date will receive 1.5% interest rate per month of received goods.")
     excel_document.add_item(
         cell=f"L{index+STARTING_ROW+1}",
         item="=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Qty])",
