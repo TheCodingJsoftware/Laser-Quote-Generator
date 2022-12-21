@@ -26,13 +26,9 @@ class ExcelFile:
         self.worksheet = self.workbook.add_worksheet("Sheet")
         self.info_worksheet = self.workbook.add_worksheet("info")
         self.worksheet.hide_gridlines(2)
-        self.worksheet.set_margins(0.25, 0.25, 0.25, 0.25)
+        self.worksheet.set_margins(0.25, 0.25, 0.25, 0.55)
         self.worksheet.freeze_panes("A4")
-        footer = (
-            "&LDate Expected\n\n______________________"
-            + "&CReceived in good order by:\n\n______________________________________________________"
-            + "&RPage &P"
-        )
+        footer = "&RPage &P"
         self.worksheet.set_footer(footer)
 
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
@@ -150,7 +146,11 @@ class ExcelFile:
             cell_format = self.workbook.add_format()
         else:
             cell_format = self.workbook.add_format({"num_format": number_format})
-        if 'Payment' not in str(item):
+        if (
+            "Payment" not in str(item)
+            and "Received" not in str(item)
+            and "__" not in str(item)
+        ):
             cell_format.set_align("center")
             cell_format.set_align("vcenter")
             cell_format.set_text_wrap()

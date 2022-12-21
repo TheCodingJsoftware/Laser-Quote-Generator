@@ -211,7 +211,9 @@ def generate_excel_file(*args, file_name: str):
     # excel_document.create_sheet(sheet_name="info")
     excel_document.add_list_to_sheet(cell="A1", items=materials)
     excel_document.add_list_to_sheet(cell="A2", items=gauges)
-    excel_document.add_list_to_sheet(cell="A3", items=["Nitrogen", "CO2", "Packing Slip", "Quote"])
+    excel_document.add_list_to_sheet(
+        cell="A3", items=["Nitrogen", "CO2", "Packing Slip", "Quote"]
+    )
     excel_document.add_list_to_sheet(
         cell="A4",
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
@@ -296,7 +298,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell="E2", item="Order #")
     excel_document.add_list(cell="F1", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_list(cell="F2", items=["", "", "", "", "", "", "", "", ""])
-    excel_document.add_list(cell="F3", items=["", "", "", "", "", "", "", "", ""])
+    excel_document.add_list(cell="F3", items=["", ""])
     excel_document.add_item(cell="A3", item="Date Shipped:")
     excel_document.add_item(cell="E3", item="Ship To:")
 
@@ -471,7 +473,10 @@ def generate_excel_file(*args, file_name: str):
         totals=True,
     )
     excel_document.add_item(cell=f"K{index+STARTING_ROW+2}", item="No Tax Included")
-    excel_document.add_item(cell=f"B{index+STARTING_ROW+2}", item="Payment past due date will receive 1.5% interest rate per month of received goods.")
+    excel_document.add_item(
+        cell=f"B{index+STARTING_ROW+2}",
+        item="Payment past due date will receive 1.5% interest rate per month of received goods.",
+    )
     excel_document.add_item(
         cell=f"L{index+STARTING_ROW+1}",
         item="=SUMPRODUCT(Table1[Cutting Length (in)],Table1[Qty])",
@@ -492,6 +497,22 @@ def generate_excel_file(*args, file_name: str):
         item="=SUM(Table1[Total Cost])",
         totals=True,
     )
+    excel_document.add_item(
+        cell=f"A{index+STARTING_ROW+4}",
+        item="Date expected:",
+    )
+    excel_document.add_item(
+        cell=f"A{index+STARTING_ROW+6}",
+        item="_______________________",
+    )
+    excel_document.add_item(
+        cell=f"E{index+STARTING_ROW+4}",
+        item="Received in good order by:",
+    )
+    excel_document.add_item(
+        cell=f"E{index+STARTING_ROW+6}",
+        item="______________________________",
+    )
 
     excel_document.add_item(cell="S1", item="Overhead:")
     excel_document.add_item(cell="T1", item=OVERHEAD, number_format="0%")
@@ -499,7 +520,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.add_item(cell="S2", item="Profit Margin:")
     excel_document.add_item(cell="T2", item=PROFIT_MARGIN, number_format="0%")
 
-    excel_document.set_print_area(cell=f"A1:K{index + STARTING_ROW+2}")
+    excel_document.set_print_area(cell=f"A1:K{index + STARTING_ROW+6}")
 
     print("\t[ ] Injecting macro.bin")
     excel_document.add_macro(macro_path=f"{program_directory}/macro.bin")
@@ -574,6 +595,10 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             gauge_for_part = convert_material_id_to_number(
                 number_id=get_table_value_from_text(regex=gauge_regex)[0],
             )
+            if (
+                int(get_table_value_from_text(regex=gauge_regex)[0]) >= 50
+            ):  # More than 1/2 inch
+                material_for_part = "Laser Grade Plate"
             cutting_with = get_cutting_method(
                 material=get_table_value_from_text(regex=material_id_regex)[0]
             )
