@@ -15,6 +15,7 @@ from alive_progress import alive_bar
 from PIL import Image
 from rich import print
 
+import gui
 from excel_file import ExcelFile
 
 program_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -45,10 +46,13 @@ surface_area_regex = r"(SURFACE: \d{1,}.\d{1,}  in2)"
 cutting_length_regex = r"(CUTTING LENGTH: \d{1,}.\d{1,}  in)"
 quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
-sheet_quantity_regex = r"(PROGRAM RUNS:  \/  SCRAP: \d{1,})"
+sheet_quantity_regex = (
+    r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,}|PROGRAM RUNS:  \/  SCRAP: \d{1,})"
+)
 piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
-material_id_regex = r"MATERIAL ID \(SHEET\): .{1,} (?=.*(ST|SS|AL)-)"
+material_id_regex = r"MATERIAL ID \(SHEET\): (?=.*(ST|SS|AL)-)"
 gauge_regex = r"MATERIAL ID \(SHEET\): .{1,} ?-(\d{1,})"
+sheet_dim_regex = r"BLANK: (\d{1,}\.\d{1,} x \d{1,}\.\d{1,}) x \d{1,}\.\d{1,}"
 
 
 def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
@@ -587,7 +591,12 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
 
             quantity_multiplier = get_table_value_from_text(regex=sheet_quantity_regex)[0]
             quantity_multiplier = int(
-                quantity_multiplier.replace("PROGRAM RUNS:  /  SCRAP: ", "")
+                quantity_multiplier.replace("PROGRAMME RUNS:  /  SCRAP: ", "").replace(
+                    "PROGRAM RUNS:  /  SCRAP: ", ""
+                )
+            )
+            sheet_dim: str = get_table_value_from_text(regex=sheet_dim_regex)[0].replace(
+                " ", ""
             )
             material_for_part = convert_material_id_to_name(
                 material=get_table_value_from_text(regex=material_id_regex)[0]
@@ -595,6 +604,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             gauge_for_part = convert_material_id_to_number(
                 number_id=get_table_value_from_text(regex=gauge_regex)[0],
             )
+
             if (
                 int(get_table_value_from_text(regex=gauge_regex)[0]) >= 50
             ):  # More than 1/2 inch
@@ -602,6 +612,11 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             cutting_with = get_cutting_method(
                 material=get_table_value_from_text(regex=material_id_regex)[0]
             )
+            part_dictionary["_" + file_name] = {
+                "quantity_multiplier": quantity_multiplier,
+                "gauge": gauge_for_part,
+                "material": material_for_part,
+            }
             part_file_paths = get_table_value_from_text(regex=geofile_name_regex)
 
             for part_name in part_file_paths:
@@ -623,6 +638,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
                     "piercing_time": 0.0,
                     "gauge": gauge_for_part,
                     "material": material_for_part,
+                    "recut": False,
+                    "sheet_dim": sheet_dim,
                 }
 
                 part_names.append(part_name)
@@ -679,7 +696,9 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             part_dictionary[part_name]["piercing_time"] = piercing_time_numbers[i]
 
         part_names.clear()
-        part_names = list(part_dictionary.keys())
+        for part_name in list(part_dictionary.keys()):
+            if part_name[0] != "_":
+                part_names.append(part_name)
 
         machining_times_numbers.clear()
         part_numbers.clear()
@@ -689,14 +708,17 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         image_index = []
 
         for part in part_dictionary:
-            machining_times_numbers.append(part_dictionary[part]["machine_time"])
-            part_numbers.append(part_dictionary[part]["part_number"])
-            quantity_numbers.append(part_dictionary[part]["quantity"])
-            weights_numbers.append(part_dictionary[part]["weight"])
-            image_index.append(part_dictionary[part]["image_index"])
-            material_for_parts.append(part_dictionary[part]["material"])
-            gauge_for_parts.append(part_dictionary[part]["gauge"])
-            piercing_time_numbers.append(part_dictionary[part]["piercing_time"])
+            try:
+                machining_times_numbers.append(part_dictionary[part]["machine_time"])
+                part_numbers.append(part_dictionary[part]["part_number"])
+                quantity_numbers.append(part_dictionary[part]["quantity"])
+                weights_numbers.append(part_dictionary[part]["weight"])
+                image_index.append(part_dictionary[part]["image_index"])
+                material_for_parts.append(part_dictionary[part]["material"])
+                gauge_for_parts.append(part_dictionary[part]["gauge"])
+                piercing_time_numbers.append(part_dictionary[part]["piercing_time"])
+            except KeyError:
+                continue
 
         progress_bar.text = "-> Generating excel sheet, please wait..."
         progress_bar()
@@ -716,8 +738,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             piercing_time_numbers,
             file_name=current_time,
         )
-
-        # save_json_file(dictionary=part_dictionary, file_name=current_time)
+        save_json_file(dictionary=part_dictionary, file_name=current_time)
 
         print(f'Opening "{program_directory}/excel files/{current_time}.xlsm"')
 
@@ -725,7 +746,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         progress_bar.text = "-> Finished! :)"
 
         os.startfile(f'"{program_directory}/excel files/{current_time}.xlsm"')
-
+        gui.load_gui(f"{program_directory}/excel files/{current_time}.json")
         shutil.rmtree(f"{program_directory}/images")
 
 
