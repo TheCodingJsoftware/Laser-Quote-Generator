@@ -70,6 +70,14 @@ class VerticalScrolledFrame(ttk.Frame):
         canvas.bind("<Configure>", _configure_canvas)
 
 
+class WrappingLabel(ttk.Label):
+    """a type of Label that automatically adjusts the wrap to the size"""
+
+    def __init__(self, master=None, **kwargs):
+        tk.Label.__init__(self, master, **kwargs)
+        self.bind("<Configure>", lambda e: self.config(wraplength=self.winfo_width()))
+
+
 class ToggleButton(ttk.Button):
     """> A ttk.Button that toggles between two states when clicked"""
 
@@ -226,12 +234,12 @@ def load_gui(json_file_path: str) -> None:
     root.title("Laser Quote Generator - Add parts to Inventory")
     root.lift()
     root.attributes("-topmost", True)
-    width, height = 700, 810
+    width, height = 850, 810
     root.geometry(f"{width}x{height}")
     root.minsize(width, height)
     root.maxsize(width, height)
     # This is where the magic happens
-    sv_ttk.set_theme("dark")
+    # sv_ttk.set_theme("dark")
 
     with open(json_file_path) as f:
         data = json.load(f)
@@ -277,7 +285,9 @@ def load_gui(json_file_path: str) -> None:
         panel.grid_rowconfigure(0, weight=1)
         panel.grid_columnconfigure(0, weight=1)
         panel.grid(row=row_i, column=0, padx=50, pady=5)
-        panel = ttk.Label(frame.interior, text=part_name)
+        panel = WrappingLabel(
+            frame.interior, text=part_name, wraplength=300, justify="center"
+        )
         panel.grid_rowconfigure(0, weight=1)
         panel.grid_columnconfigure(0, weight=1)
         panel.grid(row=row_i, column=1, padx=50, pady=5)
@@ -302,5 +312,5 @@ def load_gui(json_file_path: str) -> None:
 
 if __name__ == "__main__":
     load_gui(
-        r"F:\Code\Python-Projects\Laser-Quote-Generator\excel files\2023-02-23-18-03-26.json"
+        r"F:\Code\Python-Projects\Laser-Quote-Generator\excel files\2023-02-24-09-43-04.json"
     )
