@@ -222,7 +222,7 @@ def get_total_sheet_count(json_file_path) -> int:
     return sheet_count
 
 
-def load_gui(json_file_path: str) -> None:
+def load_gui(json_file_path: str, selected_material_type: str) -> None:
     """
     It loads a JSON file, then creates a GUI with a scrollable frame, and then populates the frame with
     the data from the JSON file.
@@ -250,7 +250,7 @@ def load_gui(json_file_path: str) -> None:
         part_to_get_sheet_dim = part_name
     panel = ttk.Label(
         root,
-        text=f"Total Sheet Count: {get_total_sheet_count(json_file_path)} - Sheet Size: {data[part_to_get_sheet_dim]['sheet_dim']} - Thickness: {data[part_to_get_sheet_dim]['gauge']}",
+        text=f"Total Sheet Count: {get_total_sheet_count(json_file_path)} - Sheet Size: {data[list(data.keys())[0]]['sheet_dim']} - Thickness: {data[list(data.keys())[0]]['gauge']}",
     )
     panel.pack()
     panel = ttk.Label(
@@ -259,8 +259,8 @@ def load_gui(json_file_path: str) -> None:
     )
     panel.pack()
     material_type = tk.StringVar(root)
-    material_type.set(data[list(data.keys())[0]]["material"])  # default value
-    dropdown_material = ttk.OptionMenu(root, material_type, *materials)
+    material_type.set(selected_material_type)  # default value
+    dropdown_material = ttk.OptionMenu(root, material_type, *[selected_material_type] + materials)
     dropdown_material.pack()
     panel = ttk.Label(
         root,
