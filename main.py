@@ -8,9 +8,9 @@ import sys
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from tkinter.constants import *
 from tkinter import *
 from tkinter import filedialog, messagebox, ttk
+from tkinter.constants import *
 
 import fitz  # PyMuPDF
 from alive_progress import alive_bar
@@ -58,30 +58,38 @@ material_id_regex = r"MATERIAL ID \(SHEET\): (?=.*(ST|SS|AL)-)"
 gauge_regex = r"MATERIAL ID \(SHEET\): .{1,} ?-(\d{1,})"
 sheet_dim_regex = r"BLANK: (\d{1,}\.\d{1,} x \d{1,}\.\d{1,}) x \d{1,}\.\d{1,}"
 
-material_selection = ''
+material_selection = ""
+
 
 class SelectionDialog:
-
     def __init__(self, parent, choicelist):
 
-        label = ttk.Label(parent, text="Select Material Type:") #.grid(row=0, column=0, sticky="W")
+        label = ttk.Label(
+            parent, text="Select Material Type:"
+        )  # .grid(row=0, column=0, sticky="W")
         label.place(rely=1.0, relx=1.0, x=-175, y=-160, anchor=SW, width=150, height=40)
 
         self.var = StringVar()
-        self.var.set('Select Material') # default option
+        self.var.set("Select Material")  # default option
         self.parent = parent
         popupMenu = ttk.OptionMenu(parent, self.var, *choicelist)
         # popupMenu.grid(sticky=N+S+E+W, row =1, column = 0)
-        popupMenu.place(rely=1.0, relx=1.0, x=-175, y=-110, anchor=SW, width=150, height=40)
+        popupMenu.place(
+            rely=1.0, relx=1.0, x=-175, y=-110, anchor=SW, width=150, height=40
+        )
 
-        apply_button = ttk.Button(parent, text='Apply', command=self.buttonfn) #.grid(row=2, column=0)
-        apply_button.place(rely=1.0, relx=1.0, x=-175, y=-20, anchor=SW, width=150, height=80)
+        apply_button = ttk.Button(
+            parent, text="Apply", command=self.buttonfn
+        )  # .grid(row=2, column=0)
+        apply_button.place(
+            rely=1.0, relx=1.0, x=-175, y=-20, anchor=SW, width=150, height=80
+        )
 
-
-    def buttonfn(self): 
+    def buttonfn(self):
         global material_selection
         material_selection = self.var.get()
         self.parent.destroy()
+
 
 def convert_pdf_to_text(pdf_paths: list, progress_bar) -> None:
     """
@@ -598,7 +606,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
     Args:
       file_names (list): list
     """
-    
+
     choicewin = tk.Tk()
     choicewin.resizable(False, False)
     choicewin.lift()
@@ -610,6 +618,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
     choicewin.title("Choose Material")
     app = SelectionDialog(choicewin, materials)
     choicewin.mainloop()
+    if material_selection == "":
+        return
 
     Path(f"{program_directory}/images").mkdir(parents=True, exist_ok=True)
     today = datetime.now()
@@ -655,7 +665,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
                 " ", ""
             )
             # material_for_part = convert_material_id_to_name(
-                # material=get_table_value_from_text(regex=material_id_regex)[0]
+            # material=get_table_value_from_text(regex=material_id_regex)[0]
             # )
             material_for_part = material_selection
             gauge_for_part = convert_material_id_to_number(
@@ -804,7 +814,9 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         progress_bar.text = "-> Finished! :)"
 
         os.startfile(f'"{program_directory}/excel files/{current_time}.xlsm"')
-        gui.load_gui(f"{program_directory}/excel files/{current_time}.json", material_selection)
+        gui.load_gui(
+            f"{program_directory}/excel files/{current_time}.json", material_selection
+        )
         shutil.rmtree(f"{program_directory}/images")
 
 
