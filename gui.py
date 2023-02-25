@@ -243,10 +243,14 @@ def load_gui(json_file_path: str) -> None:
 
     with open(json_file_path) as f:
         data = json.load(f)
-
+    part_to_get_sheet_dim = ""
+    for part_name in list(data.keys()):
+        if part_name[0] == "_":
+            continue
+        part_to_get_sheet_dim = part_name
     panel = ttk.Label(
         root,
-        text=f"Total Sheet Count: {get_total_sheet_count(json_file_path)} - Sheet Size: {data[list(data.keys())[0]]['sheet_dim']} - Thickness: {data[list(data.keys())[0]]['gauge']}",
+        text=f"Total Sheet Count: {get_total_sheet_count(json_file_path)} - Sheet Size: {data[part_to_get_sheet_dim]['sheet_dim']} - Thickness: {data[part_to_get_sheet_dim]['gauge']}",
     )
     panel.pack()
     panel = ttk.Label(
