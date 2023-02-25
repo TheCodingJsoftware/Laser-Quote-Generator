@@ -35,6 +35,8 @@ AL      Aluminium       Nitrogen
 """
 gauges = global_variables["GLOBAL VARIABLES"]["gauges"].split(",")
 path_to_sheet_prices = global_variables["GLOBAL VARIABLES"]["path_to_sheet_prices"]
+with open(path_to_sheet_prices, "r") as f:
+    sheet_prices = json.load(f)
 size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
 PROFIT_MARGIN: float = float(global_variables["GLOBAL VARIABLES"]["profit_margin"])
 OVERHEAD: float = float(global_variables["GLOBAL VARIABLES"]["overhead"])
@@ -222,17 +224,30 @@ def generate_excel_file(*args, file_name: str):
         cell="A4",
         items=[nitrogen_cost_per_hour, co2_cost_per_hour],
     )
+    excel_document.add_list_to_sheet(
+        cell="A5",
+        items=list(sheet_prices["Price Per Pound"].keys()),
+    )
+    excel_document.add_list_to_sheet(
+        cell="A6",
+        items=[
+            sheet_prices["Price Per Pound"][sheet_name]["price"]
+            for sheet_name in list(sheet_prices["Price Per Pound"].keys())
+        ],
+    )
     excel_document.set_row_hidden_sheet(cell="A1", hidden=True)
     excel_document.set_row_hidden_sheet(cell="A2", hidden=True)
     excel_document.set_row_hidden_sheet(cell="A3", hidden=True)
     excel_document.set_row_hidden_sheet(cell="A4", hidden=True)
+    excel_document.set_row_hidden_sheet(cell="A5", hidden=True)
+    excel_document.set_row_hidden_sheet(cell="A6", hidden=True)
 
     excel_document.add_list_to_sheet(
-        cell="A5",
+        cell="A7",
         items=["Total parts: ", "", "", "=ROWS(Table1[Part name])"],
     )
     excel_document.add_list_to_sheet(
-        cell="A6",
+        cell="A8",
         items=[
             "Total machine time (min): ",
             "",
@@ -249,7 +264,7 @@ def generate_excel_file(*args, file_name: str):
         ],
     )
     excel_document.add_list_to_sheet(
-        cell="A7",
+        cell="A9",
         items=[
             "Total weight (lb): ",
             "",
@@ -258,11 +273,11 @@ def generate_excel_file(*args, file_name: str):
         ],
     )
     excel_document.add_list_to_sheet(
-        cell="A8",
+        cell="A10",
         items=["Total quantities: ", "", "", "=SUM(Table1[Qty])"],
     )
     excel_document.add_list_to_sheet(
-        cell="A9",
+        cell="A11",
         items=[
             "Total surface area (in2): ",
             "",
@@ -271,7 +286,7 @@ def generate_excel_file(*args, file_name: str):
         ],
     )
     excel_document.add_list_to_sheet(
-        cell="A10",
+        cell="A12",
         items=[
             "Total cutting length (in): ",
             "",
@@ -280,7 +295,7 @@ def generate_excel_file(*args, file_name: str):
         ],
     )
     excel_document.add_list_to_sheet(
-        cell="A11",
+        cell="A13",
         items=[
             "Total piercing time (sec): ",
             "",
@@ -289,10 +304,10 @@ def generate_excel_file(*args, file_name: str):
         ],
     )
     excel_document.add_item_to_sheet(
-        cell="A12",
+        cell="A14",
         item=f"{len(args[5])} files loaded",
     )
-    excel_document.add_list_to_sheet(cell="A13", items=args[5], horizontal=False)
+    excel_document.add_list_to_sheet(cell="A15", items=args[5], horizontal=False)
 
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=33)
@@ -390,7 +405,9 @@ def generate_excel_file(*args, file_name: str):
             cell=f"F{row}", type="list", location="'info'!$A$2:$K$2"
         )
 
-        cost_for_weight = f"INDEX('{path_to_sheet_prices}'!$D$6:$J$6,MATCH($E${row},'{path_to_sheet_prices}'!$D$5:$J$5,0))*$D${row}"
+        cost_for_weight = (
+            f"INDEX(info!$A$6:$G$6,MATCH($E${row},info!$A$5:$G$5,0))*$D${row}"
+        )
         cost_for_time = (
             f"(INDEX('info'!$A$4:$B$4,MATCH($Q$2,'info'!$A$3:$B$3,0))/60)*$C${row}"
         )
