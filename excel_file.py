@@ -20,15 +20,16 @@ class ExcelFile:
                 "company": "TheCodingJ'software",
                 "category": "Laser Quotes",
                 "keywords": "Laser, Quotes, Laser Quotes",
-                "comments": "Created with Python, Magic and XlsxWriter",
+                "comments": "Created with Python, Magic, XlsxWriter and Love",
             }
         )
+        self.FONT_NAME: str = "Book Antiqua"
         self.worksheet = self.workbook.add_worksheet("Sheet")
         self.info_worksheet = self.workbook.add_worksheet("info")
         self.worksheet.hide_gridlines(2)
         self.worksheet.set_margins(0.25, 0.25, 0.25, 0.55)
         self.worksheet.freeze_panes("A4")
-        footer = "&RPage &P"
+        footer = "&RPage &P of &N"
         self.worksheet.set_footer(footer)
 
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
@@ -143,9 +144,11 @@ class ExcelFile:
         col, row = self.parse_cell(cell=cell)
 
         if number_format is None:
-            cell_format = self.workbook.add_format()
+            cell_format = self.workbook.add_format({"font_name": self.FONT_NAME})
         else:
-            cell_format = self.workbook.add_format({"num_format": number_format})
+            cell_format = self.workbook.add_format(
+                {"num_format": number_format, "font_name": self.FONT_NAME}
+            )
         if (
             "Payment" not in str(item)
             and "Received" not in str(item)
@@ -277,16 +280,15 @@ class ExcelFile:
     def save(self) -> None:
         """Save excel file."""
         merge_format = self.workbook.add_format(
-            {
-                "align": "top",
-                "valign": "right",
-            }
+            {"align": "top", "valign": "right", "font_name": self.FONT_NAME}
         )
         merge_format.set_text_wrap()
         self.worksheet.merge_range(
             "J1:K1", f"{datetime.now().strftime('%B %d, %A, %Y')}", merge_format
         )
-        merge_format = self.workbook.add_format({"align": "center", "valign": "center"})
+        merge_format = self.workbook.add_format(
+            {"align": "center", "valign": "center", "font_name": self.FONT_NAME}
+        )
         merge_format.set_bold()
         merge_format.set_font_size(18)
         merge_format.set_bottom(1)

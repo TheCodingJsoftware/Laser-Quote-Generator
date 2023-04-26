@@ -42,12 +42,14 @@ with open(path_to_sheet_prices, "r") as f:
 size_of_picture = int(global_variables["GLOBAL VARIABLES"]["size_of_picture"])
 PROFIT_MARGIN: float = float(global_variables["GLOBAL VARIABLES"]["profit_margin"])
 OVERHEAD: float = float(global_variables["GLOBAL VARIABLES"]["overhead"])
+path_to_save_quotes = global_variables["GLOBAL VARIABLES"]["path_to_save_quotes"]
+path_to_save_workorders = global_variables["GLOBAL VARIABLES"]["path_to_save_workorders"]
 
 geofile_name_regex = r"(GEOFILE NAME: [a-zA-z]:\\[\w\W]{1,300}\.geo|GEOFILE NAME: [a-zA-Z]:\\[\w\W]{1,300}\.GEO)"
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
 weight_regex = r"(WEIGHT: \d{1,}.\d{1,} lb)"
 surface_area_regex = r"(SURFACE: \d{1,}.\d{1,}  in2)"
-cutting_length_regex = r"(CUTTING LENGTH: \d{1,}.\d{1,}  in)"
+cutting_length_regex = r"(CUTTING LENGTH: \d{1,}.\d{1,}  in|CUTTING LENGTH: \d{1,}  in)"
 quantity_regex = r"(  NUMBER: \d{1,})"
 part_number_regex = r"(PART NUMBER: \d{1,})"
 sheet_quantity_regex = (
@@ -63,7 +65,6 @@ material_selection = ""
 
 class SelectionDialog:
     def __init__(self, parent, choicelist):
-
         label = ttk.Label(
             parent, text="Select Material Type:"
         )  # .grid(row=0, column=0, sticky="W")
@@ -245,14 +246,17 @@ def generate_excel_file(*args, file_name: str):
     """
     print("[ ] Generating excel sheet")
 
-    excel_document = ExcelFile(
-        file_name=f"{program_directory}/excel files/{file_name}.xlsm"
-    )
+    if args[12] == "go":  # Work sheet directory
+        excel_document = ExcelFile(
+            file_name=f"{path_to_save_workorders}/{file_name}.xlsm"
+        )
+    else:  # Quote directory
+        excel_document = ExcelFile(file_name=f"{path_to_save_quotes}/{file_name}.xlsm")
     # excel_document.create_sheet(sheet_name="info")
     excel_document.add_list_to_sheet(cell="A1", items=materials)
     excel_document.add_list_to_sheet(cell="A2", items=gauges)
     excel_document.add_list_to_sheet(
-        cell="A3", items=["Nitrogen", "CO2", "Packing Slip", "Quote"]
+        cell="A3", items=["Nitrogen", "CO2", "Packing Slip", "Quote", "Work Order"]
     )
     excel_document.add_list_to_sheet(
         cell="A4",
@@ -399,7 +403,7 @@ def generate_excel_file(*args, file_name: str):
         cell="Q2", type="list", location="'info'!$A$3:$B$3"
     )
     excel_document.add_dropdown_selection(
-        cell="E1", type="list", location="'info'!$C$3:$D$3"
+        cell="E1", type="list", location="'info'!$C$3:$E$3"
     )
     STARTING_ROW: int = 5
     excel_document.add_list(
@@ -580,9 +584,14 @@ def generate_excel_file(*args, file_name: str):
     print("\t[ ] Injecting macro.bin")
     excel_document.add_macro(macro_path=f"{program_directory}/macro.bin")
 
+    if args[12] == "go":
+        excel_document.set_col_hidden("J1", True)
+        excel_document.set_col_hidden("K1", True)
+
     print("\t[+] Injected macro.bin")
     excel_document.save()
     print("[+] Excel sheet generated.")
+    os.remove("action")
 
 
 def save_json_file(dictionary: dict, file_name: str) -> None:
@@ -616,7 +625,9 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
     choicewin.minsize(width, height)
     choicewin.maxsize(width, height)
     choicewin.title("Choose Material")
-    app = SelectionDialog(choicewin, materials)
+    t_materials = materials
+    t_materials.insert(0, "304 SS")
+    app = SelectionDialog(choicewin, t_materials)
     choicewin.mainloop()
     if material_selection == "":
         return
@@ -775,6 +786,13 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         piercing_time_numbers.clear()
         image_index = []
 
+        save_json_file(dictionary=part_dictionary, file_name=current_time)
+
+        gui.load_gui(
+            f"{program_directory}/excel files/{current_time}.json", material_selection
+        )
+        with open(f"{program_directory}/excel files/{current_time}.json", "r") as f:
+            part_dictionary = json.load(f)
         for part in part_dictionary:
             try:
                 machining_times_numbers.append(part_dictionary[part]["machine_time"])
@@ -791,6 +809,9 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         progress_bar.text = "-> Generating excel sheet, please wait..."
         progress_bar()
 
+        with open(f"{program_directory}/action", "r") as f:
+            action = f.read()
+
         generate_excel_file(
             part_names,
             machining_times_numbers,
@@ -804,19 +825,16 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             material_for_parts,
             cutting_with,
             piercing_time_numbers,
+            action,
             file_name=current_time,
         )
-        save_json_file(dictionary=part_dictionary, file_name=current_time)
 
         print(f'Opening "{program_directory}/excel files/{current_time}.xlsm"')
 
         progress_bar()
         progress_bar.text = "-> Finished! :)"
 
-        os.startfile(f'"{program_directory}/excel files/{current_time}.xlsm"')
-        gui.load_gui(
-            f"{program_directory}/excel files/{current_time}.json", material_selection
-        )
+        # os.startfile(f'"{program_directory}/excel files/{current_time}.xlsm"')
         shutil.rmtree(f"{program_directory}/images")
 
 
@@ -829,28 +847,6 @@ root.withdraw()
 
 Path(f"{program_directory}/excel files").mkdir(parents=True, exist_ok=True)
 
-size = (
-    sum(
-        d.stat().st_size
-        for d in os.scandir(f"{program_directory}/excel files")
-        if d.is_file()
-    )
-    / 1049000
-)
-
-if size > 5:  # mb
-    response = messagebox.askquestion(
-        "Answer the question",
-        "You have accumulated over 5mb\nworth of excel documents, would \nyou like to delete them?",
-    )
-    if response == "yes":
-        try:
-            shutil.rmtree(f"{program_directory}/excel files")
-        except OSError as e:
-            messagebox.showerror(
-                "Error",
-                f"{e.filename} - {e.strerror}.\n\nTry running in administrator mode\nnext time or closing opened\nexcel files.",
-            )
 
 filetypes = (("pdf files", "*.pdf"),)
 file_paths = filedialog.askopenfilenames(

@@ -21,6 +21,7 @@ program_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 global_variables = configparser.ConfigParser()
 global_variables.read(f"{program_directory}/global_variables.cfg")
 materials = global_variables["GLOBAL VARIABLES"]["materials"].split(",")
+input_dialogs = {}
 
 
 class VerticalScrolledFrame(ttk.Frame):
@@ -184,7 +185,8 @@ def go_button_pressed(root, json_file_path, material_type) -> None:
     Args:
       json_file_path: The path to the JSON file that you want to upload.
     """
-
+    with open(f"{program_directory}/action", "w") as f:
+        f.write("go")
     with open(json_file_path) as f:
         data = json.load(f)
     for item in list(data.keys()):
@@ -200,6 +202,22 @@ def go_button_pressed(root, json_file_path, material_type) -> None:
         "Sending",
         "I am sending file hold on",
     )
+
+
+def make_quote_button_pressed(root, json_file_path, material_type) -> None:
+    """
+    This function writes "quote" to a file and destroys the root window.
+
+    Args:
+      root: The root parameter is a reference to the main window or frame of the GUI application. It is
+    used to destroy the current window or frame when the quote button is pressed.
+      json_file_path: The file path to a JSON file.
+      material_type: The material_type parameter is not used in the given function. It is likely a
+    parameter that is used in other parts of the program.
+    """
+    with open(f"{program_directory}/action", "w") as f:
+        f.write("quote")
+    root.destroy()
 
 
 def get_total_sheet_count(json_file_path) -> int:
@@ -220,6 +238,25 @@ def get_total_sheet_count(json_file_path) -> int:
         if part_name[0] == "_"
     )
     return sheet_count
+
+
+def quantity_change(json_file_path, part_name: str) -> None:
+    """
+    This function updates the quantity of a specific part in a JSON file based on user input.
+
+    Args:
+      json_file_path: The file path of the JSON file that contains the data to be modified.
+      part_name (str): The parameter `part_name` is a string that represents the name of a part in a
+    JSON file. The function `quantity_change` updates the quantity of this part in the JSON file based
+    on user input.
+    """
+    with open(json_file_path) as f:
+        data = json.load(f)
+
+    data[part_name]["quantity"] = int(input_dialogs[part_name].get())
+
+    with open(json_file_path, "w") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
 
 def load_gui(json_file_path: str, selected_material_type: str) -> None:
@@ -260,7 +297,9 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
     panel.pack()
     material_type = tk.StringVar(root)
     material_type.set(selected_material_type)  # default value
-    dropdown_material = ttk.OptionMenu(root, material_type, *[selected_material_type] + materials)
+    dropdown_material = ttk.OptionMenu(
+        root, material_type, *[selected_material_type] + materials
+    )
     dropdown_material.pack()
     panel = ttk.Label(
         root,
@@ -295,7 +334,17 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
         panel.grid_rowconfigure(0, weight=1)
         panel.grid_columnconfigure(0, weight=1)
         panel.grid(row=row_i, column=1, padx=50, pady=5)
-        panel = ttk.Label(frame.interior, text=data[part_name]["quantity"])
+
+        var = tk.DoubleVar(root)
+        panel = tk.Spinbox(
+            frame.interior,
+            from_=0,
+            to=99999999,
+            textvariable=var,
+            command=partial(quantity_change, json_file_path, part_name),
+        )
+        var.set(str(data[part_name]["quantity"]))
+        input_dialogs[part_name] = panel
         panel.grid_rowconfigure(0, weight=1)
         panel.grid_columnconfigure(0, weight=1)
         panel.grid(row=row_i, column=2, padx=50, pady=5)
@@ -305,16 +354,26 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
         panel.grid_columnconfigure(0, weight=1)
         panel.grid(row=row_i, column=3, padx=50, pady=5)
 
+    # NOTE Make work order with col hidden and send to inventory
     recut_button = ttk.Button(
         root,
-        text="GO!",
+        text="Send to Inventory &\nWorkorder!!",
         command=partial(go_button_pressed, root, json_file_path, material_type),
     )
     recut_button.place(rely=1.0, relx=1.0, x=-10, y=-10, anchor=SE, width=150, height=80)
+
+    # NOTE Quote NOT GO TO INVENTORY BUT JUST MAKE EXCEL FILE
+    quote_button = ttk.Button(
+        root,
+        text="Make Quote!",
+        command=partial(make_quote_button_pressed, root, json_file_path, material_type),
+    )
+    quote_button.place(rely=1.0, relx=1.0, x=-170, y=-10, anchor=SE, width=150, height=80)
     root.mainloop()
 
 
 if __name__ == "__main__":
     load_gui(
-        r"F:\Code\Python-Projects\Laser-Quote-Generator\excel files\2023-02-24-09-43-04.json"
+        r"F:\Code\Python-Projects\Laser-Quote-Generator\excel files\2023-04-26-11-05-37.json",
+        "304 SS",
     )
