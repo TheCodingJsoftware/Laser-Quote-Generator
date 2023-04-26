@@ -193,7 +193,6 @@ def go_button_pressed(root, json_file_path, material_type) -> None:
         data[item]["material"] = material_type.get()
     with open(json_file_path, "w") as f:
         json.dump(data, f)
-    print(material_type.get())
     threading.Thread(
         target=upload_file, args=["laser_parts_list_upload", json_file_path]
     ).start()
@@ -206,15 +205,23 @@ def go_button_pressed(root, json_file_path, material_type) -> None:
 
 def make_quote_button_pressed(root, json_file_path, material_type) -> None:
     """
-    This function writes "quote" to a file and destroys the root window.
+    This function updates a JSON file with a selected material type and writes "quote" to a separate
+    file before destroying the root window.
 
     Args:
-      root: The root parameter is a reference to the main window or frame of the GUI application. It is
-    used to destroy the current window or frame when the quote button is pressed.
-      json_file_path: The file path to a JSON file.
-      material_type: The material_type parameter is not used in the given function. It is likely a
-    parameter that is used in other parts of the program.
+      root: The root parameter is typically a reference to the main window or frame of a GUI
+    application. It is used to access and modify the widgets and properties of the application.
+      json_file_path: The file path to a JSON file that contains data to be modified.
+      material_type: It is a variable that contains the selected material type. It is likely a tkinter
+    StringVar() object that is used to store the value of a dropdown menu or radio button selection. The
+    value of this variable is used to update the "material" field in a JSON file.
     """
+    with open(json_file_path) as f:
+        data = json.load(f)
+    for item in list(data.keys()):
+        data[item]["material"] = material_type.get()
+    with open(json_file_path, "w") as f:
+        json.dump(data, f)
     with open(f"{program_directory}/action", "w") as f:
         f.write("quote")
     root.destroy()
