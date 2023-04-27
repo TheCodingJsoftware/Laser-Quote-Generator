@@ -59,6 +59,8 @@ part_number_regex = r"(PART NUMBER: \d{1,})"
 sheet_quantity_regex = (
     r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,}|PROGRAM RUNS:  \/  SCRAP: \d{1,})"
 )
+sheet_scrap_percentage_regex = r"(PROGRAMME RUNS:  \/  SCRAP: \d{1,}  \/  \d{1,}.\d{1,} %|PROGRAM RUNS:  \/  SCRAP: \d{1,}  \/  \d{1,}.\d{1,} %)"
+scrap_percentage_regex = r"(\d{1,}.\d{1,}) %"
 piercing_time_regex = r"(PIERCING TIME \d{1,}.\d{1,}  s)"
 material_id_regex = r"MATERIAL ID \(SHEET\): (?=.*(ST|SS|AL)-)"
 gauge_regex = r"MATERIAL ID \(SHEET\): .{1,} ?-(\d{1,})"
@@ -240,6 +242,26 @@ def get_table_value_from_text(regex) -> list:
 
     return items
 
+def get_value_from_string(regex, text) -> list:
+    """
+    This function extracts table values from a string using a regular expression and returns them as a
+    list.
+
+    Args:
+      regex: A regular expression pattern used to match and extract values from the input text.
+      text: I'm sorry, but the 'text' parameter is missing. Please provide the text parameter so I can
+    assist you better.
+
+    Returns:
+      a list of items that match the regular expression pattern in the given text.
+    """
+    items = []
+
+    matches = re.finditer(regex, text, re.MULTILINE)
+    for match in matches:
+        items.extend(iter(match.groups()))
+
+    return items
 
 def generate_excel_file(*args, file_name: str):
     """
@@ -356,7 +378,7 @@ def generate_excel_file(*args, file_name: str):
     for i, sheet_name in enumerate(list(price_of_steel_information['pounds_per_square_foot'].keys())):
         for j, thickness in enumerate(price_of_steel_information['pounds_per_square_foot'][sheet_name]):
             excel_document.add_item_to_sheet(cell=f"{temp_col[i]}{16+len(args[5])+j}", item=price_of_steel_information['pounds_per_square_foot'][sheet_name][thickness])
-            
+
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=33)
     excel_document.set_cell_height(cell="A2", height=34)
@@ -507,8 +529,8 @@ def generate_excel_file(*args, file_name: str):
         location=f"A{STARTING_ROW-1}:O{index+STARTING_ROW}",
         headers=headers,
     )
-    excel_document.add_item(cell=f"A{index+STARTING_ROW+1}", item="", totals=True)
-    excel_document.add_item(cell=f"B{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"A{index+STARTING_ROW+1}", item=f"Scrap: {args[14]}%;        Sheet Quantity:", totals=True)
+    excel_document.add_item(cell=f"B{index+STARTING_ROW+1}", item=args[13], totals=True)
     excel_document.add_item(
         cell=f"C{index+STARTING_ROW+1}",
         item="=SUMPRODUCT(Table1[Machining time (min)],Table1[Qty])",
@@ -519,8 +541,13 @@ def generate_excel_file(*args, file_name: str):
         item="=SUMPRODUCT(Table1[Weight (lb)],Table1[Qty])",
         totals=True,
     )
-    excel_document.add_item(cell=f"E{index+STARTING_ROW+1}", item="", totals=True)
-    excel_document.add_item(cell=f"F{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"E{index+STARTING_ROW+1}", item="Sheet Price Total:", totals=True)
+    sheet_dim_left = f'TEXTAFTER("{args[15]}", "x")'
+    sheet_dim_right = f'TEXTBEFORE("{args[15]}", "x")'
+    price_per_pound = "INDEX(info!$A$6:$G$6,MATCH($E$6, info!$A$5:$G$5,0))"
+    pounds_per_sheet = f'INDEX(info!$B${16+len(args[5])}:$H${16+len(args[5])+15},MATCH($F$6,info!$A${16+len(args[5])}:$A${16+len(args[5])+15},0),MATCH($E$6,info!$B${15+len(args[5])}:$H${15+len(args[5])},0))'
+    sheet_quantity = f'B{index+STARTING_ROW+1}'
+    excel_document.add_item(cell=f"F{index+STARTING_ROW+1}", item=f'={sheet_dim_right}*{sheet_dim_left}/144*{price_per_pound}*{pounds_per_sheet}*{sheet_quantity}', number_format="$#,##0.00", totals=True)
     excel_document.add_item(cell=f"G{index+STARTING_ROW+1}", item="", totals=True)
     excel_document.add_item(cell=f"J{index+STARTING_ROW+1}", item="Total: ", totals=True)
     excel_document.add_item(
@@ -664,6 +691,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         piercing_time_numbers = []
         material_for_parts = []
         gauge_for_parts = []
+        quantity_multiplier: int = 1
+        scrap_percentage: float = 0
 
         progress_bar.text = "-> Getting images, please wait..."
         extract_images_from_pdf(file_names, progress_bar)
@@ -682,6 +711,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
                     "PROGRAM RUNS:  /  SCRAP: ", ""
                 )
             )
+            scrap_percentage_string = get_table_value_from_text(regex=sheet_scrap_percentage_regex)[0]
+            scrap_percentage: float = float(get_value_from_string(regex=scrap_percentage_regex, text=scrap_percentage_string)[0])
             sheet_dim: str = get_table_value_from_text(regex=sheet_dim_regex)[0].replace(
                 " ", ""
             )
@@ -823,19 +854,22 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             action = f.read()
 
         generate_excel_file(
-            part_names,
-            machining_times_numbers,
-            weights_numbers,
-            quantity_numbers,
-            image_index,
-            file_names,
-            surface_areas_numbers,
-            cutting_lengths_numbers,
-            gauge_for_parts,
-            material_for_parts,
-            cutting_with,
-            piercing_time_numbers,
-            action,
+            part_names,                             #0
+            machining_times_numbers,    #1
+            weights_numbers,                    #2
+            quantity_numbers,                   #3
+            image_index,                              #4
+            file_names,                                 #5
+            surface_areas_numbers,         #6
+            cutting_lengths_numbers,       #7
+            gauge_for_parts,                      #8
+            material_for_parts,                 #9
+            cutting_with,                             #10
+            piercing_time_numbers,           #11
+            action,                                        #12 'go' or 'quote'
+            quantity_multiplier,                #13
+            scrap_percentage,                   #14
+            sheet_dim,                                 #15
             file_name=current_time,
         )
 

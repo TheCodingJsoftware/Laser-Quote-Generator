@@ -165,6 +165,7 @@ class ExcelFile:
             or "Date Shipped:" in str(item)
             or "No Tax Included" in str(item)
             or "=SUM(Table1[Price])" in str(item)
+            or "TEXTAFTER" in str(item)
         ):
             cell_format.set_bold()
         if col == "K" and row > 2 and "Tax" not in str(item):
