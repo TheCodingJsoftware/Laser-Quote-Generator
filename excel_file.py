@@ -28,7 +28,7 @@ class ExcelFile:
         self.info_worksheet = self.workbook.add_worksheet("info")
         self.worksheet.hide_gridlines(2)
         self.worksheet.set_margins(0.25, 0.25, 0.25, 0.55)
-        self.worksheet.freeze_panes("A4")
+        self.worksheet.freeze_panes("A5")
         footer = "&RPage &P of &N"
         self.worksheet.set_footer(footer)
 

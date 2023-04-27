@@ -419,6 +419,7 @@ def generate_excel_file(*args, file_name: str):
     excel_document.set_cell_width(cell="J1", width=12)
     excel_document.set_cell_width(cell="K1", width=12)
     excel_document.set_cell_width(cell="P1", width=12)
+    excel_document.set_cell_width(cell="R1", width=12)
 
     excel_document.set_col_hidden(cell="C1", hidden=True)
     excel_document.set_col_hidden(cell="D1", hidden=True)
@@ -529,8 +530,15 @@ def generate_excel_file(*args, file_name: str):
         location=f"A{STARTING_ROW-1}:O{index+STARTING_ROW}",
         headers=headers,
     )
-    excel_document.add_item(cell=f"A{index+STARTING_ROW+1}", item=f"Scrap: {args[14]}%;        Sheet Quantity:", totals=True)
-    excel_document.add_item(cell=f"B{index+STARTING_ROW+1}", item=args[13], totals=True)
+    excel_document.add_item(cell=f"A{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"B{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"C{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"D{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"E{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"F{index+STARTING_ROW+1}", item="", totals=True)
+    excel_document.add_item(cell=f"P{index+STARTING_ROW}", item=f"Scrap: {args[14]}%", totals=False)
+    excel_document.add_item(cell=f"P{index+STARTING_ROW+1}", item=f"Sheets:", totals=False)
+    excel_document.add_item(cell=f"Q{index+STARTING_ROW+1}", item=args[13], totals=False)
     excel_document.add_item(
         cell=f"C{index+STARTING_ROW+1}",
         item="=SUMPRODUCT(Table1[Machining time (min)],Table1[Qty])",
@@ -541,13 +549,13 @@ def generate_excel_file(*args, file_name: str):
         item="=SUMPRODUCT(Table1[Weight (lb)],Table1[Qty])",
         totals=True,
     )
-    excel_document.add_item(cell=f"E{index+STARTING_ROW+1}", item="Sheet Price Total:", totals=True)
+    excel_document.add_item(cell=f"R{index+STARTING_ROW+1}", item="Total:", totals=False)
     sheet_dim_left = f'TEXTAFTER("{args[15]}", "x")'
     sheet_dim_right = f'TEXTBEFORE("{args[15]}", "x")'
     price_per_pound = "INDEX(info!$A$6:$G$6,MATCH($E$6, info!$A$5:$G$5,0))"
     pounds_per_sheet = f'INDEX(info!$B${16+len(args[5])}:$H${16+len(args[5])+15},MATCH($F$6,info!$A${16+len(args[5])}:$A${16+len(args[5])+15},0),MATCH($E$6,info!$B${15+len(args[5])}:$H${15+len(args[5])},0))'
-    sheet_quantity = f'B{index+STARTING_ROW+1}'
-    excel_document.add_item(cell=f"F{index+STARTING_ROW+1}", item=f'={sheet_dim_right}*{sheet_dim_left}/144*{price_per_pound}*{pounds_per_sheet}*{sheet_quantity}', number_format="$#,##0.00", totals=True)
+    sheet_quantity = f'Q{index+STARTING_ROW+1}'
+    excel_document.add_item(cell=f"S{index+STARTING_ROW+1}", item=f'={sheet_dim_right}*{sheet_dim_left}/144*{price_per_pound}*{pounds_per_sheet}*{sheet_quantity}', number_format="$#,##0.00", totals=False)
     excel_document.add_item(cell=f"G{index+STARTING_ROW+1}", item="", totals=True)
     excel_document.add_item(cell=f"J{index+STARTING_ROW+1}", item="Total: ", totals=True)
     excel_document.add_item(
@@ -693,6 +701,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         gauge_for_parts = []
         quantity_multiplier: int = 1
         scrap_percentage: float = 0
+        total_sheet_count: int = 0
 
         progress_bar.text = "-> Getting images, please wait..."
         extract_images_from_pdf(file_names, progress_bar)
@@ -711,6 +720,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
                     "PROGRAM RUNS:  /  SCRAP: ", ""
                 )
             )
+            total_sheet_count += quantity_multiplier
             scrap_percentage_string = get_table_value_from_text(regex=sheet_scrap_percentage_regex)[0]
             scrap_percentage: float = float(get_value_from_string(regex=scrap_percentage_regex, text=scrap_percentage_string)[0])
             sheet_dim: str = get_table_value_from_text(regex=sheet_dim_regex)[0].replace(
@@ -854,22 +864,22 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             action = f.read()
 
         generate_excel_file(
-            part_names,                             #0
+            part_names,                 #0
             machining_times_numbers,    #1
-            weights_numbers,                    #2
-            quantity_numbers,                   #3
-            image_index,                              #4
-            file_names,                                 #5
-            surface_areas_numbers,         #6
-            cutting_lengths_numbers,       #7
-            gauge_for_parts,                      #8
-            material_for_parts,                 #9
-            cutting_with,                             #10
-            piercing_time_numbers,           #11
-            action,                                        #12 'go' or 'quote'
-            quantity_multiplier,                #13
-            scrap_percentage,                   #14
-            sheet_dim,                                 #15
+            weights_numbers,            #2
+            quantity_numbers,           #3
+            image_index,                #4
+            file_names,                 #5
+            surface_areas_numbers,      #6
+            cutting_lengths_numbers,    #7
+            gauge_for_parts,            #8
+            material_for_parts,         #9
+            cutting_with,               #10
+            piercing_time_numbers,      #11
+            action,                     #12 'go' or 'quote'
+            total_sheet_count,          #13
+            scrap_percentage,           #14
+            sheet_dim,                  #15
             file_name=current_time,
         )
 
