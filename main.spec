@@ -19,8 +19,8 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
-a.datas += Tree("C:/Users/jared/AppData/Local/Programs/Python/Python39/Lib/site-packages/grapheme/", prefix= "grapheme")
-a.datas += Tree("C:/Users/jared/AppData/Local/Programs/Python/Python39/lib/site-packages/about_time/", prefix= "about-time")
+a.datas += Tree("C:/Users/jared/AppData/Local/Programs/Python/Python310/Lib/site-packages/grapheme/", prefix= "grapheme")
+a.datas += Tree("C:/Users/jared/AppData/Local/Programs/Python/Python310/lib/site-packages/about_time/", prefix= "about-time")
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(

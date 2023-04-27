@@ -278,7 +278,7 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
     root.title("Laser Quote Generator - Add parts to Inventory")
     root.lift()
     root.attributes("-topmost", True)
-    width, height = 850, 810
+    width, height = 950, 810
     root.geometry(f"{width}x{height}")
     root.minsize(width, height)
     root.maxsize(width, height)

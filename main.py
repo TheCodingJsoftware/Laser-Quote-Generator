@@ -44,6 +44,10 @@ PROFIT_MARGIN: float = float(global_variables["GLOBAL VARIABLES"]["profit_margin
 OVERHEAD: float = float(global_variables["GLOBAL VARIABLES"]["overhead"])
 path_to_save_quotes = global_variables["GLOBAL VARIABLES"]["path_to_save_quotes"]
 path_to_save_workorders = global_variables["GLOBAL VARIABLES"]["path_to_save_workorders"]
+price_of_steel_information_path = global_variables["GLOBAL VARIABLES"]["price_of_steel_information"]
+
+with open(price_of_steel_information_path, "r") as f:
+    price_of_steel_information = json.load(f)
 
 geofile_name_regex = r"(GEOFILE NAME: [a-zA-z]:\\[\w\W]{1,300}\.geo|GEOFILE NAME: [a-zA-Z]:\\[\w\W]{1,300}\.GEO)"
 machining_time_regex = r"(MACHINING TIME: \d{1,}.\d{1,} min)"
@@ -346,7 +350,13 @@ def generate_excel_file(*args, file_name: str):
         item=f"{len(args[5])} files loaded",
     )
     excel_document.add_list_to_sheet(cell="A15", items=args[5], horizontal=False)
-
+    excel_document.add_list_to_sheet(cell=f"A{15+len(args[5])}", items=['Gauge'] + list(price_of_steel_information['pounds_per_square_foot'].keys()), horizontal=True)
+    excel_document.add_list_to_sheet(cell=f"A{16+len(args[5])}", items=list(price_of_steel_information['pounds_per_square_foot']['304 SS'].keys()), horizontal=False)
+    temp_col = {0: "B", 1: "C",2: "D", 3: "E",4:"F", 5: "G", 6: "H"}
+    for i, sheet_name in enumerate(list(price_of_steel_information['pounds_per_square_foot'].keys())):
+        for j, thickness in enumerate(price_of_steel_information['pounds_per_square_foot'][sheet_name]):
+            excel_document.add_item_to_sheet(cell=f"{temp_col[i]}{16+len(args[5])+j}", item=price_of_steel_information['pounds_per_square_foot'][sheet_name][thickness])
+            
     excel_document.add_image(cell="A1", path_to_image=f"{program_directory}/logo.png")
     excel_document.set_cell_height(cell="A1", height=33)
     excel_document.set_cell_height(cell="A2", height=34)
@@ -833,8 +843,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
 
         progress_bar()
         progress_bar.text = "-> Finished! :)"
-
-        # os.startfile(f'"{program_directory}/excel files/{current_time}.xlsm"')
+        if action == 'go':
+            os.startfile(f'"{path_to_save_workorders}/{current_time}.xlsm"')
         shutil.rmtree(f"{program_directory}/images")
 
 
