@@ -274,10 +274,14 @@ def generate_excel_file(*args, file_name: str):
 
     if args[12] == "go":  # Work sheet directory
         excel_document = ExcelFile(
-            file_name=f"{path_to_save_workorders}/{file_name}.xlsm"
+            file_name=f"{path_to_save_workorders}/{file_name}.xlsm",
+            program_directory=program_directory
         )
     else:  # Quote directory
-        excel_document = ExcelFile(file_name=f"{path_to_save_quotes}/{file_name}.xlsm")
+        excel_document = ExcelFile(
+            file_name=f"{path_to_save_quotes}/{file_name}.xlsm",
+            program_directory=program_directory
+        )
     # excel_document.create_sheet(sheet_name="info")
     excel_document.add_list_to_sheet(cell="A1", items=materials)
     excel_document.add_list_to_sheet(cell="A2", items=gauges)
@@ -383,7 +387,10 @@ def generate_excel_file(*args, file_name: str):
     excel_document.set_cell_height(cell="A1", height=33)
     excel_document.set_cell_height(cell="A2", height=34)
     excel_document.set_cell_height(cell="A3", height=34)
-    excel_document.add_item(cell="E1", item="Packing Slip")
+    if args[12] == 'go':
+        excel_document.add_item(cell="E1", item="Work Order")
+    else:
+        excel_document.add_item(cell="E1", item="Packing Slip")
     excel_document.add_item(cell="E2", item="Order #")
     excel_document.add_list(cell="F1", items=["", "", "", "", "", "", "", "", ""])
     excel_document.add_list(cell="F2", items=["", "", "", "", "", "", "", "", ""])
@@ -439,33 +446,6 @@ def generate_excel_file(*args, file_name: str):
         cell="E1", type="list", location="'info'!$C$3:$E$3"
     )
     STARTING_ROW: int = 5
-    excel_document.add_list(
-        cell=f"B{STARTING_ROW}", items=args[0], horizontal=False
-    )  # File name B
-    excel_document.add_list(
-        cell=f"C{STARTING_ROW}", items=args[1], horizontal=False
-    )  # Machine Time C
-    excel_document.add_list(
-        cell=f"D{STARTING_ROW}", items=args[2], horizontal=False
-    )  # Weight D
-    excel_document.add_list(
-        cell=f"E{STARTING_ROW}", items=args[9], horizontal=False
-    )  # Material Type E
-    excel_document.add_list(
-        cell=f"F{STARTING_ROW}", items=args[8], horizontal=False
-    )  # Gauge Selection F
-    excel_document.add_list(
-        cell=f"G{STARTING_ROW}", items=args[3], horizontal=False
-    )  # Quantity G
-    excel_document.add_list(
-        cell=f"L{STARTING_ROW}", items=args[6], horizontal=False
-    )  # Cutting Length L
-    excel_document.add_list(
-        cell=f"M{STARTING_ROW}", items=args[7], horizontal=False
-    )  # Surface Area M
-    excel_document.add_list(
-        cell=f"N{STARTING_ROW}", items=args[11], horizontal=False
-    )  # Piercing Time N
 
     for index in range(len(args[0])):
         row: int = index + STARTING_ROW
@@ -476,6 +456,33 @@ def generate_excel_file(*args, file_name: str):
             cell=f"F{row}", type="list", location="'info'!$A$2:$K$2"
         )
 
+        excel_document.add_item(
+            cell=f"B{row}", item=args[0][index]
+        )  # File name B
+        excel_document.add_item(
+            cell=f"C{row}", item=args[1][index]
+        )  # Machine Time C
+        excel_document.add_item(
+            cell=f"D{row}", item=args[2][index]
+        )  # Weight D
+        excel_document.add_item(
+            cell=f"E{row}", item=args[9][index]
+        )  # Material Type E
+        excel_document.add_item(
+            cell=f"F{row}", item=args[8][index]
+        )  # Gauge Selection F
+        excel_document.add_item(
+            cell=f"G{row}", item=args[3][index]
+        )  # Quantity G
+        excel_document.add_item(
+            cell=f"L{row}", item=args[6][index]
+        )  # Cutting Length L
+        excel_document.add_item(
+            cell=f"M{row}", item=args[7][index]
+        )  # Surface Area M
+        excel_document.add_item(
+            cell=f"N{row}", item=args[11][index]
+        )  # Piercing Time N
         cost_for_weight = (
             f"INDEX(info!$A$6:$G$6,MATCH($E${row},info!$A$5:$G$5,0))*$D${row}"
         )
@@ -516,7 +523,8 @@ def generate_excel_file(*args, file_name: str):
             item=f"={total_cost}",
             number_format="$#,##0.00",
         )  # Total Cost
-
+        
+        # Image
         excel_document.add_image(
             cell=f"A{row}",
             path_to_image=f"{program_directory}/images/{args[4][index]}.jpeg",
@@ -826,10 +834,6 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
             part_dictionary[part_name]["piercing_time"] = piercing_time_numbers[i]
 
         part_names.clear()
-        for part_name in list(part_dictionary.keys()):
-            if part_name[0] != "_":
-                part_names.append(part_name)
-
         machining_times_numbers.clear()
         part_numbers.clear()
         quantity_numbers.clear()
@@ -844,6 +848,11 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         )
         with open(f"{program_directory}/excel files/{current_time}.json", "r") as f:
             part_dictionary = json.load(f)
+
+        for part_name in part_dictionary:
+            if part_name[0] != "_":
+                part_names.append(part_name)
+                
         for part in part_dictionary:
             try:
                 machining_times_numbers.append(part_dictionary[part]["machine_time"])
@@ -887,6 +896,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
 
         progress_bar()
         progress_bar.text = "-> Finished! :)"
+        
         if action == 'go':
             os.startfile(f'"{path_to_save_workorders}/{current_time}.xlsm"')
         shutil.rmtree(f"{program_directory}/images")

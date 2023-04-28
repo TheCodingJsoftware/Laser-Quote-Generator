@@ -129,7 +129,7 @@ def check_part_number_boolean(json_file_path, part_name) -> None:
     data[part_name]["recut"] = not data[part_name]["recut"]
 
     with open(json_file_path, "w") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        json.dump(data, f, sort_keys=True, ensure_ascii=False, indent=4)
 
 
 def upload_file(command: str, json_file_path: str) -> None:
@@ -192,7 +192,7 @@ def go_button_pressed(root, json_file_path, material_type) -> None:
     for item in list(data.keys()):
         data[item]["material"] = material_type.get()
     with open(json_file_path, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, sort_keys=True, indent=4)
     threading.Thread(
         target=upload_file, args=["laser_parts_list_upload", json_file_path]
     ).start()
@@ -221,7 +221,7 @@ def make_quote_button_pressed(root, json_file_path, material_type) -> None:
     for item in list(data.keys()):
         data[item]["material"] = material_type.get()
     with open(json_file_path, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, sort_keys=True, indent=4)
     with open(f"{program_directory}/action", "w") as f:
         f.write("quote")
     root.destroy()
@@ -263,7 +263,7 @@ def quantity_change(json_file_path, part_name: str) -> None:
     data[part_name]["quantity"] = int(input_dialogs[part_name].get())
 
     with open(json_file_path, "w") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        json.dump(data, f, sort_keys=True, ensure_ascii=False, indent=4)
 
 
 def load_gui(json_file_path: str, selected_material_type: str) -> None:
@@ -364,7 +364,7 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
     # NOTE Make work order with col hidden and send to inventory
     recut_button = ttk.Button(
         root,
-        text="Send to Inventory &\nWorkorder!!",
+        text="Send to Inventory &\nGenerate workorder!!",
         command=partial(go_button_pressed, root, json_file_path, material_type),
     )
     recut_button.place(rely=1.0, relx=1.0, x=-10, y=-10, anchor=SE, width=150, height=80)
@@ -372,7 +372,7 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
     # NOTE Quote NOT GO TO INVENTORY BUT JUST MAKE EXCEL FILE
     quote_button = ttk.Button(
         root,
-        text="Make Quote!",
+        text="Generate Quote!",
         command=partial(make_quote_button_pressed, root, json_file_path, material_type),
     )
     quote_button.place(rely=1.0, relx=1.0, x=-170, y=-10, anchor=SE, width=150, height=80)

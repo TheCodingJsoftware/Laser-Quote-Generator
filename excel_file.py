@@ -9,7 +9,7 @@ from openpyxl.utils.cell import column_index_from_string, get_column_letter
 class ExcelFile:
     """Create excel files easier with openpyxl"""
 
-    def __init__(self, file_name: str) -> None:
+    def __init__(self, file_name: str, program_directory: str) -> None:
         self.workbook = xlsxwriter.Workbook(file_name)
         self.workbook.set_properties(
             {
@@ -34,6 +34,7 @@ class ExcelFile:
 
         self.cell_regex = r"^([A-Z]+)([1-9]\d*)$"
         self.file_name = file_name
+        self.program_directory = program_directory
 
     def parse_cell(self, cell: str):
         """Parses excel cell input such as "AD300"
@@ -293,5 +294,11 @@ class ExcelFile:
         merge_format.set_bold()
         merge_format.set_font_size(18)
         merge_format.set_bottom(1)
-        self.worksheet.merge_range("E1:G1", "Packing Slip", merge_format)
+        
+        with open(f"{self.program_directory}/action", "r") as f:
+            action = f.read()
+        if action == 'go':
+            self.worksheet.merge_range("E1:G1", "Work Order", merge_format)
+        else:
+            self.worksheet.merge_range("E1:G1", "Packing Slip", merge_format)
         self.workbook.close()
