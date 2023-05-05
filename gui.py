@@ -266,6 +266,7 @@ def quantity_change(json_file_path, part_name: str) -> None:
         json.dump(data, f, sort_keys=True, ensure_ascii=False, indent=4)
 
 
+
 def load_gui(json_file_path: str, selected_material_type: str) -> None:
     """
     It loads a JSON file, then creates a GUI with a scrollable frame, and then populates the frame with
@@ -281,7 +282,7 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
     width, height = 950, 810
     root.geometry(f"{width}x{height}")
     root.minsize(width, height)
-    root.maxsize(width, height)
+    # root.maxsize(width, height)
     # This is where the magic happens
     # sv_ttk.set_theme("dark")
 
@@ -343,18 +344,19 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
         panel.grid(row=row_i, column=1, padx=50, pady=5)
 
         var = tk.DoubleVar(root)
-        panel = tk.Spinbox(
+        spin_box = tk.Spinbox(
             frame.interior,
             from_=0,
             to=99999999,
             textvariable=var,
             command=partial(quantity_change, json_file_path, part_name),
         )
+
         var.set(str(data[part_name]["quantity"]))
-        input_dialogs[part_name] = panel
-        panel.grid_rowconfigure(0, weight=1)
-        panel.grid_columnconfigure(0, weight=1)
-        panel.grid(row=row_i, column=2, padx=50, pady=5)
+        input_dialogs[part_name] = spin_box
+        spin_box.grid_rowconfigure(0, weight=1)
+        spin_box.grid_columnconfigure(0, weight=1)
+        spin_box.grid(row=row_i, column=2, padx=50, pady=5)
         # panel.pack()
         panel = ToggleButton(frame.interior, text=f"{part_name};{json_file_path}")
         panel.grid_rowconfigure(0, weight=1)
@@ -381,6 +383,6 @@ def load_gui(json_file_path: str, selected_material_type: str) -> None:
 
 if __name__ == "__main__":
     load_gui(
-        r"F:\Code\Python-Projects\Laser-Quote-Generator\excel files\2023-04-26-11-05-37.json",
+        r"F:\Code\Python-Projects\Laser-Quote-Generator\excel files\2023-04-28-17-20-43.json",
         "304 SS",
     )

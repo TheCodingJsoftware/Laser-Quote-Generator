@@ -523,7 +523,7 @@ def generate_excel_file(*args, file_name: str):
             item=f"={total_cost}",
             number_format="$#,##0.00",
         )  # Total Cost
-        
+
         # Image
         excel_document.add_image(
             cell=f"A{row}",
@@ -839,6 +839,8 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         quantity_numbers.clear()
         weights_numbers.clear()
         piercing_time_numbers.clear()
+        surface_areas_numbers.clear()
+        cutting_lengths_numbers.clear()
         image_index = []
 
         save_json_file(dictionary=part_dictionary, file_name=current_time)
@@ -852,7 +854,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
         for part_name in part_dictionary:
             if part_name[0] != "_":
                 part_names.append(part_name)
-                
+
         for part in part_dictionary:
             try:
                 machining_times_numbers.append(part_dictionary[part]["machine_time"])
@@ -863,14 +865,19 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
                 material_for_parts.append(part_dictionary[part]["material"])
                 gauge_for_parts.append(part_dictionary[part]["gauge"])
                 piercing_time_numbers.append(part_dictionary[part]["piercing_time"])
+                cutting_lengths_numbers.append(part_dictionary[part]['cutting_length'])
+                surface_areas_numbers.append(part_dictionary[part]['surface_area'])
             except KeyError:
                 continue
 
         progress_bar.text = "-> Generating excel sheet, please wait..."
         progress_bar()
 
-        with open(f"{program_directory}/action", "r") as f:
-            action = f.read()
+        try:
+            with open(f"{program_directory}/action", "r") as f:
+                action = f.read()
+        except Exception:
+            return
 
         generate_excel_file(
             part_names,                 #0
@@ -896,7 +903,7 @@ def convert(file_names: list):  # sourcery skip: low-code-quality
 
         progress_bar()
         progress_bar.text = "-> Finished! :)"
-        
+
         if action == 'go':
             os.startfile(f'"{path_to_save_workorders}/{current_time}.xlsm"')
         shutil.rmtree(f"{program_directory}/images")
